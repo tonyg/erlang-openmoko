@@ -12,6 +12,8 @@
 log(Kind, Format, Args, State) ->
     log(Kind, lists:flatten(io_lib:format(Format, Args)), State).
 
+log(Kind, Str, State = #state{event_list_store = none}) ->
+    State;
 log(Kind, Str, State = #state{event_list_store = ListStore}) ->
     Stamp = lists:flatten(io_lib:format("~s", [iso_8601_fmt(erlang:localtime())])),
     KindText = lists:flatten(io_lib:format("~s", [Kind])),
@@ -59,6 +61,12 @@ handle_event(Message, State) ->
 handle_info({?W, {signal, {clear_button, clicked}}}, State = #state{event_list_store = LS}) ->
     gui:cmd(?W, 'Gtk_list_store_clear', [LS]),
     {ok, State};
+handle_info({?W, {signal, {Window = log_gui_window, 'delete-event'}}}, State) ->
+    ok = terminate(window_closed, State),
+    {ok, State#state{event_list_store = none}};
+handle_info({'EXIT', _Pid, _Reason}, State) ->
+    ok = terminate(got_exit_signal, State),
+    {ok, _NewState} = init([]);
 handle_info(Message, State) ->
     {ok, log(error, "Unknown log_gui:handle_info ~p~n", [Message], State)}.
 
