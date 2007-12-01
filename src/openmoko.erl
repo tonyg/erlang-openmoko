@@ -5,9 +5,9 @@
 -export([start/0, stop/0, stop_and_halt/0]).
 
 start() ->
-    MnesiaDir = mnesia:system_info(directory) ++ "/",
-    ok = filelib:ensure_dir(MnesiaDir),
-    ok = mnesia:start(),
+    %MnesiaDir = mnesia:system_info(directory) ++ "/",
+    %ok = filelib:ensure_dir(MnesiaDir),
+    %ok = mnesia:start(),
     ok = error_logger:add_report_handler(log_gui, []),
     application:start(?MODULE).
 

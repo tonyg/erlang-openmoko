@@ -5,7 +5,11 @@
   {modules, [openmoko]},
   {registered, [modem_server,
                 openmoko_sup]},
-  {applications, [kernel, stdlib, sasl, mnesia]},
+  {applications, [kernel,
+		  stdlib,
+		  sasl
+		  %, mnesia
+		 ]},
   {mod, {openmoko, []}},
   {env, [
 
