@@ -24,6 +24,7 @@ register_with_network() ->
     {ok, "OK", []} = modem_server:cmd("AT+CFUN=1", infinity),
     {ok, "OK", []} = modem_server:cmd("AT+COPS", 30000),
     {ok, "OK", []} = modem_server:cmd("AT+CLIP=1"),
+    gen_event:notify(?MODEM_EVENT_SERVER_NAME, registered_with_network),
     ok.
 
 handle_modem_event(modem_ready, State) ->

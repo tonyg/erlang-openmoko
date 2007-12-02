@@ -25,6 +25,9 @@ init([]) ->
 	   {modem_server, {modem_server, start_link, []}, transient, 5, worker,
 	    [modem_server]},
 
+	   {sms_manager, {sms_manager, start_link, []}, transient, 5, worker,
+	    [sms_manager]},
+
 	   {call_manager, {call_manager, start_link, []}, transient, 5, worker,
 	    [call_manager]}
 	  ]}}.
