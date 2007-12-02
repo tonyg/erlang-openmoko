@@ -14,7 +14,7 @@ start_link() ->
 %---------------------------------------------------------------------------
 %% Implementation
 
--record(state, {}).
+-record(state, {list_store}).
 
 setup_modem() ->
     {ok, "OK", []} = modem_server:cmd("AT+CMGF=1"),
@@ -28,7 +28,18 @@ handle_modem_event(_Other, State) ->
 
 init_gui() ->
     gui:start_glade(?W, "smsmanager.glade"),
-    ok.
+    ListStore = gui:new_list_store(?W, [string, string]),
+    C0 = gui:new_tree_view_column(?W, 0, "Time"),
+    C1 = gui:new_tree_view_column(?W, 1, "Number"),
+    gui:cmd(?W, 'Gtk_tree_view_set_model', [sms_index, ListStore]),
+    gui:cmd(?W, 'Gtk_tree_view_append_column', [sms_index, C0]),
+    gui:cmd(?W, 'Gtk_tree_view_append_column', [sms_index, C1]),
+
+    gui:list_store_append(?W, ListStore),
+    gui:list_store_set(?W, ListStore, 0, "test1"),
+    gui:list_store_set(?W, ListStore, 1, "test2"),
+
+    {ok, ListStore}.
 
 stop_gui() ->
     gui:stop(?W),
@@ -38,10 +49,10 @@ stop_gui() ->
 %% gen_server behaviour
 
 init([]) ->
-    init_gui(),
+    {ok, ListStore} = init_gui(),
     ok = gen_event:add_sup_handler(?MODEM_EVENT_SERVER_NAME, event_forwarder,
 				   [self(), ?MODEM_EVENT_SERVER_NAME]),
-    {ok, #state{}}.
+    {ok, #state{list_store = ListStore}}.
 
 handle_call(_Request, _From, State) ->
     {reply, not_understood, State}.
