@@ -24,11 +24,13 @@ update_caller_id(State = #state{calling_number = PhoneNumberStr}) ->
 show_window(State = #state{visible = false}) ->
     gui:cmd(?W, 'Gtk_label_set_text', [number_label, "(unknown)"]),
     gui:cmd(?W, 'Gtk_widget_show', [ringing_dialog]),
+    os:cmd(filename:join(openmoko:priv_dir(), "start_ringing.sh")),
     State#state{visible = true};
 show_window(State = #state{visible = true}) ->
     State.
 
 hide_window(State = #state{visible = true}) ->
+    os:cmd(filename:join(openmoko:priv_dir(), "stop_ringing.sh")),
     gui:cmd(?W, 'Gtk_widget_hide', [ringing_dialog]),
     State#state{visible = false};
 hide_window(State = #state{visible = false}) ->
@@ -47,6 +49,7 @@ handle_call(_Request, _From, State) ->
     {reply, not_understood, State}.
 
 handle_cast(ring_detected, State) ->
+    openmoko_vibrator:vibrate(),
     {noreply, show_window(State), ?RING_TERMINATION_TIMEOUT};
 handle_cast({caller_id, PhoneNumber}, State) ->
     {noreply, update_caller_id(State#state{calling_number = PhoneNumber}),

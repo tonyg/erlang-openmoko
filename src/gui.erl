@@ -1,5 +1,4 @@
 -module(gui).
--export([priv_dir/0]).
 -export([start_glade/2, stop/1]).
 -export([cmd/3, cmd/4]).
 
@@ -8,17 +7,9 @@
 
 %-----------------------------------------------------------------
 
-priv_dir() ->
-    case code:priv_dir(?MODULE) of
-	{error, bad_name} ->
-	    "./priv";
-	D ->
-	    D
-    end.
-
 start_glade(WindowAtom, GladeFile) ->
     gtknode:start(WindowAtom),
-    void = cmd(WindowAtom, 'GN_glade_init', [filename:join(priv_dir(), GladeFile)]),
+    void = cmd(WindowAtom, 'GN_glade_init', [filename:join(openmoko:priv_dir(), GladeFile)]),
     ok.
 
 stop(WindowAtom) ->

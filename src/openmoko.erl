@@ -3,6 +3,15 @@
 
 -export([start/2, stop/1]).
 -export([start/0, stop/0, stop_and_halt/0]).
+-export([priv_dir/0]).
+
+priv_dir() ->
+    case code:priv_dir(?MODULE) of
+	{error, bad_name} ->
+	    "./priv";
+	D ->
+	    D
+    end.
 
 start() ->
     %MnesiaDir = mnesia:system_info(directory) ++ "/",
