@@ -32,6 +32,7 @@ $(EBIN_DIR)/%.beam: $(SOURCE_DIR)/%.erl
 
 clean: cleandb
 	rm -f $(TARGETS)
+	rm -f ebin/*.beam
 
 cleandb: stop-node
 	erl -mnesia dir '"$(MNESIA_DIR)"' -noshell -eval 'lists:foreach(fun file:delete/1, filelib:wildcard(mnesia:system_info(directory) ++ "/*")), halt().'
