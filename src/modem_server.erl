@@ -4,7 +4,7 @@
 -export([start_link/0, start_link/3]).
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
 
--export([set_power/1, powercycle/0]).
+-export([set_power/1, powercycle/0, get_peer_state/0]).
 -export([setup_modem/0]).
 -export([cmd/1, cmd/2, cmd_with_body/2, cmd_nowait/1, cmd_async/2]).
 
@@ -36,6 +36,9 @@ set_power(on) ->  gen_server:call(?MODULE, {set_power, on}).
 powercycle() ->
     ok = set_power(off),
     ok = set_power(on).
+
+get_peer_state() ->
+    gen_server:call(?MODULE, get_peer_state).
 
 cmd(CommandString) ->
     cmd_with_body(CommandString, []).
@@ -263,6 +266,8 @@ handle_call({set_power, off}, _From, State) ->
     {reply, ok, close_serial_port(internal_set_power(off, State))};
 handle_call({set_power, on}, _From, State) ->
     {reply, ok, open_serial_port(internal_set_power(on, State))};
+handle_call(get_peer_state, _From, State = #state{peer_state = PeerState}) ->
+    {reply, {ok, PeerState}, State};
 handle_call({cmd, CommandString, BodyLines}, From, State) ->
     {noreply, send_and_enqueue(CommandString, BodyLines, From, State)};
 handle_call(Request, _From, State) ->
