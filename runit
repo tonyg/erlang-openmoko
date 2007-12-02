@@ -1,3 +1,3 @@
 export DISPLAY=:0.0
 cd /media/card/erlang-openmoko/
-erl -boot start_sasl -sname openmoko +W w -pa ebin +K true +A10 -kernel inet_default_listen_options '[{sndbuf, 16384}, {recbuf, 4096}]' -sasl errlog_type error -mnesia dir '"/tmp/openmoko-openmoko-mnesia"'  -s openmoko
+erl -noshell -boot start_sasl -sname openmoko +W w -pa ebin +K true +A10 -kernel inet_default_listen_options '[{sndbuf, 16384}, {recbuf, 4096}]' -sasl errlog_type error -mnesia dir '"/tmp/openmoko-openmoko-mnesia"'  -s openmoko

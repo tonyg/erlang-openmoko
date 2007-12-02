@@ -1,0 +1,12 @@
+[Desktop Entry]
+Encoding=UTF-8
+Name=ErlangOpenmoko
+Comment=Erlang Openmoko Suite
+Exec=/media/card/erlang-openmoko/runit
+Icon=openmoko-terminal
+Terminal=false
+Type=Application
+Categories=GTK;Application;Utilities;
+MimeType=text/x-vcard;
+SingleInstance=true
+StartupNotify=true

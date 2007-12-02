@@ -30,6 +30,28 @@ iso_8601_fmt(DateTime) ->
     io_lib:format("~4.10.0B-~2.10.0B-~2.10.0B ~2.10.0B:~2.10.0B:~2.10.0B",
 		  [Year, Month, Day, Hour, Min, Sec]).
 
+run_tools() ->
+    spawn(fun () ->
+		  TW = tools_node,
+		  gui:start_glade(TW, "tools.glade"),
+		  gui:cmd(TW, 'Gtk_widget_show', [tools_dialog]),
+		  tools_loop(TW),
+		  gui:cmd(TW, 'Gtk_widget_hide', [tools_dialog]),
+		  gui:stop(TW)
+	  end),
+    ok.
+
+tools_loop(TW) ->
+    receive
+	{TW, {signal, {close_button, clicked}}} ->
+	    done;
+	{TW, {signal, {quit_button, clicked}}} ->
+	    init:stop();
+	{TW, {signal, {powercycle_button, clicked}}} ->
+	    modem_server:powercycle(),
+	    tools_loop(TW)
+    end.
+
 %---------------------------------------------------------------------------
 %% gen_event behaviour
 
@@ -58,6 +80,9 @@ handle_event({Kind, _GroupLeader, {_Pid, Format, Args}}, State) ->
 handle_event(Message, State) ->
     {ok, log(error, "Unknown log_gui:handle_event ~p~n", [Message], State)}.
 
+handle_info({?W, {signal, {tools_button, clicked}}}, State) ->
+    ok = run_tools(),
+    {ok, State};
 handle_info({?W, {signal, {clear_button, clicked}}}, State = #state{event_list_store = LS}) ->
     gui:cmd(?W, 'Gtk_list_store_clear', [LS]),
     {ok, State};

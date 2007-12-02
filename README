@@ -1,0 +1,5 @@
+If it starts only when you run it over ssh, ie. over a real network
+connection, then make sure fic-gta01 is in your /etc/hosts. You can
+confirm that this might be the problem by running "erl -sname foo"
+from a terminal window. If it hangs, perhaps a missing entry in
+/etc/hosts is to blame.
