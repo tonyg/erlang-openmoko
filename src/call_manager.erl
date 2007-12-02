@@ -89,9 +89,14 @@ hangup(State) ->
     mark_no_call(State).
 
 dial(Number, State) ->
-    openmoko_audio:select_profile(?CALL_AUDIO_PROFILE),
-    {ok, "OK", []} = modem_server:cmd("ATD" ++ Number ++ ";"),
-    mark_call_in_progress(Number, State).
+    case Number of
+	"" ->
+	    State;
+	_ ->
+	    openmoko_audio:select_profile(?CALL_AUDIO_PROFILE),
+	    {ok, "OK", []} = modem_server:cmd("ATD" ++ Number ++ ";"),
+	    mark_call_in_progress(Number, State)
+    end.
 
 clear_digits(State) ->
     set_number_to_dial_label(?EMPTY_NUMBER),
