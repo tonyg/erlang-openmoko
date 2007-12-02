@@ -1,0 +1,2 @@
+export DISPLAY=:0.0
+erl -boot start_sasl -sname openmoko +W w -pa ebin +K true +A10 -kernel inet_default_listen_options '[{sndbuf, 16384}, {recbuf, 4096}]' -sasl errlog_type error -mnesia dir '"/tmp/openmoko-openmoko-mnesia"'  -s openmoko
