@@ -12,7 +12,7 @@
 log(Kind, Format, Args, State) ->
     log(Kind, lists:flatten(io_lib:format(Format, Args)), State).
 
-log(Kind, Str, State = #state{event_list_store = none}) ->
+log(_Kind, _Str, State = #state{event_list_store = none}) ->
     State;
 log(Kind, Str, State = #state{event_list_store = ListStore}) ->
     Stamp = lists:flatten(io_lib:format("~s", [iso_8601_fmt(erlang:localtime())])),
@@ -31,7 +31,7 @@ iso_8601_fmt(DateTime) ->
 		  [Year, Month, Day, Hour, Min, Sec]).
 
 %---------------------------------------------------------------------------
-%% gen_server behaviour
+%% gen_event behaviour
 
 init([]) ->
     gui:start_glade(?W, "openmoko.glade"),
@@ -61,7 +61,7 @@ handle_event(Message, State) ->
 handle_info({?W, {signal, {clear_button, clicked}}}, State = #state{event_list_store = LS}) ->
     gui:cmd(?W, 'Gtk_list_store_clear', [LS]),
     {ok, State};
-handle_info({?W, {signal, {Window = log_gui_window, 'delete-event'}}}, State) ->
+handle_info({?W, {signal, {log_gui_window, 'delete-event'}}}, State) ->
     ok = terminate(window_closed, State),
     {ok, State#state{event_list_store = none}};
 handle_info({'EXIT', _Pid, _Reason}, State) ->

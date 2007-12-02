@@ -8,6 +8,8 @@
 -export([setup_modem/0]).
 -export([cmd/1, cmd/2, cmd_nowait/1, cmd_async/2]).
 
+-include("openmoko.hrl").
+
 -define(POWER_OFF_PAUSE, 500).
 -define(POWER_ON_PAUSE, 500).
 
@@ -127,12 +129,36 @@ send_unsent(Q, State) ->
 	    State
     end.
 
-unsolicited("AT-Command Interpreter ready", State = #state{unsent_commands = Unsent}) ->
-    error_logger:info_msg("Modem ready.~n"),
-    send_unsent(Unsent, State#state{peer_state = ready,
-				    unsent_commands = queue:new()});
+parse_clip(ClipInfo) ->
+    {ok, AllPieces} = regexp:split(ClipInfo, ","),
+    [QuotedPhoneNumber | Pieces] = lists:map(fun string:strip/1, AllPieces),
+    [string:strip(QuotedPhoneNumber, both, $") | Pieces].
+
+unsolicited(Line, State = #state{peer_state = initialising,
+				 unsent_commands = Unsent}) ->
+    case regexp:match(Line, "AT-Command Interpreter ready$" % " - emacs balancing
+		     ) of
+	nomatch ->
+	    error_logger:warning_msg("Swallowing junk during modem initialisation: ~p~n", [Line]),
+	    State;
+	{match, _, _} ->
+	    error_logger:info_msg("Modem ready.~n"),
+	    gen_event:notify(?MODEM_EVENT_SERVER_NAME, modem_ready),
+	    send_unsent(Unsent, State#state{peer_state = ready,
+					    unsent_commands = queue:new()})
+    end;
+unsolicited("RING", State) ->
+    gen_event:notify(?MODEM_EVENT_SERVER_NAME, modem_ringing),
+    State;
+unsolicited("NO CARRIER", State) ->
+    gen_event:notify(?MODEM_EVENT_SERVER_NAME, modem_hung_up),
+    State;
+unsolicited("+CLIP:" ++ ClipInfo, State) ->
+    gen_event:notify(?MODEM_EVENT_SERVER_NAME, {caller_id, parse_clip(ClipInfo)}),
+    State;
 unsolicited(Line, State) ->
-    error_logger:error_msg("Unsolicited line from modem: ~p~n", [Line]),
+    error_logger:warning_msg("Unsolicited line from modem: ~p~n", [Line]),
+    gen_event:notify(?MODEM_EVENT_SERVER_NAME, {modem_unsolicited, Line}),
     State.
 
 parse_integer_response(ResponseStr) ->
