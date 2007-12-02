@@ -56,6 +56,8 @@ handle_button_click(hangup_button, State) ->
     hangup(State);
 handle_button_click(clear_button, State) ->
     clear_digits(State);
+handle_button_click(backspace_button, State) ->
+    backspace(State);
 handle_button_click(button0, State) -> append_char($0, State);
 handle_button_click(button1, State) -> append_char($1, State);
 handle_button_click(button2, State) -> append_char($2, State);
@@ -94,6 +96,14 @@ dial(Number, State) ->
 clear_digits(State) ->
     set_number_to_dial_label(?EMPTY_NUMBER),
     State#state{number_to_dial = ?EMPTY_NUMBER}.
+
+backspace(State = #state{number_to_dial = OldNumber}) ->
+    Number = case OldNumber of
+		 "" -> "";
+		 _ -> string:substr(OldNumber, 1, length(OldNumber) - 1)
+	     end,
+    ok = set_number_to_dial_label(Number),
+    State#state{number_to_dial = Number}.
 
 set_number_to_dial_label(Text) ->
     gui:cmd(?W, 'Gtk_label_set_text', [number_to_dial, Text]),
