@@ -77,9 +77,9 @@ process_incoming([C | More], State = #state{line_accumulator = Acc}) ->
 terminate_reply(State = #state{line_accumulator = Acc}) ->
     process_reply(lists:reverse(Acc), State#state{line_accumulator = ""}).
 
-non_extended_final_response("OK") -> true;
-non_extended_final_response("ERROR") -> true;
-non_extended_final_response(_) -> false.
+ordinary_final_response("OK") -> true;
+ordinary_final_response("ERROR") -> true;
+ordinary_final_response(_) -> false.
 
 process_reply("", State) ->
     State;
@@ -91,7 +91,7 @@ process_reply(Line, State = #state{pending_commands = OldKs}) ->
 		    error_logger:info_msg("Ignoring echo: ~p~n", [Line]),
 		    State;
 		_ ->
-		    case non_extended_final_response(Line) of
+		    case ordinary_final_response(Line) of
 			true ->
 			    build_and_send_reply(From, CommandString, Line, lists:reverse(Lines)),
 			    State#state{pending_commands = Ks};
