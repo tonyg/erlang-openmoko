@@ -8,6 +8,9 @@
 -export([setup_modem/0]).
 -export([cmd/1, cmd/2, cmd_nowait/1, cmd_async/2]).
 
+-define(POWER_OFF_PAUSE, 500).
+-define(POWER_ON_PAUSE, 500).
+
 %---------------------------------------------------------------------------
 %% External API
 
@@ -30,7 +33,6 @@ set_power(on) ->  gen_server:call(?MODULE, {set_power, on}).
 
 powercycle() ->
     ok = set_power(off),
-    timer:sleep(500),
     ok = set_power(on).
 
 cmd(CommandString) ->
@@ -48,22 +50,34 @@ cmd_async(CommandString, Pid) ->
 setup_modem() ->
     {ok, "OK", []} = cmd("ATZ"),
     {ok, "OK", []} = cmd("ATE0"),
+    {ok, "OK", []} = cmd("AT+CMEE=1"),
     ok.
 
 %---------------------------------------------------------------------------
 %% Implementation
 
--record(state, {config, port, pending_commands, line_accumulator}).
+-record(state, {peer_state, config, port, unsent_commands, pending_commands, line_accumulator}).
 -record(pending, {command, from, lines}).
 
-send_and_enqueue(CommandString, From, State = #state{port = Port,
-						     pending_commands = OldKs}) ->
+mk_pending(CommandString, From) ->
+    #pending{command = CommandString,
+	     from = From,
+	     lines = []}.
+
+send_and_enqueue(CommandString, From, State) ->
+    send_and_enqueue(mk_pending(CommandString, From), State).
+
+send_and_enqueue(Pending = #pending{command = CommandString},
+		 State = #state{peer_state = ready,
+				port = Port,
+				pending_commands = OldKs}) ->
     error_logger:info_msg("Sending command ~p~n", [CommandString]),
     Port ! {send, CommandString ++ [13]},
-    State#state{pending_commands = queue:in(#pending{command = CommandString,
-						     from = From,
-						     lines = []},
-					    OldKs)}.
+    State#state{pending_commands = queue:in(Pending, OldKs)};
+send_and_enqueue(Pending = #pending{command = CommandString},
+		 State = #state{unsent_commands = Unsent}) ->
+    error_logger:info_msg("Queueing command ~p~n", [CommandString]),
+    State#state{unsent_commands = queue:in(Pending, Unsent)}.
 
 process_incoming("", State) ->
     State;
@@ -77,10 +91,6 @@ process_incoming([C | More], State = #state{line_accumulator = Acc}) ->
 terminate_reply(State = #state{line_accumulator = Acc}) ->
     process_reply(lists:reverse(Acc), State#state{line_accumulator = ""}).
 
-ordinary_final_response("OK") -> true;
-ordinary_final_response("ERROR") -> true;
-ordinary_final_response(_) -> false.
-
 process_reply("", State) ->
     State;
 process_reply(Line, State = #state{pending_commands = OldKs}) ->
@@ -91,29 +101,66 @@ process_reply(Line, State = #state{pending_commands = OldKs}) ->
 		    error_logger:info_msg("Ignoring echo: ~p~n", [Line]),
 		    State;
 		_ ->
-		    case ordinary_final_response(Line) of
-			true ->
-			    build_and_send_reply(From, CommandString, Line, lists:reverse(Lines)),
+		    case analyse_response(Line) of
+			{final, Summary} ->
+			    send_reply(From, CommandString, {Summary, Line, lists:reverse(Lines)}),
 			    State#state{pending_commands = Ks};
-			false ->
+			partial ->
 			    error_logger:info_msg("Got partial reply ~p to command ~p~n",
 						  [Line, CommandString]),
 			    State#state{pending_commands =
 					  queue:in_r(Pending#pending{lines = [Line | Lines]},
-						     Ks)}
+						     Ks)};
+			unsolicited ->
+			    unsolicited(Line, State)
 		    end
 	    end;
 	{empty, _} ->
-	    error_logger:error_msg("Unsolicited line from modem: ~p~n", [Line]),
+	    unsolicited(Line, State)
+    end.
+
+send_unsent(Q, State) ->
+    case queue:out(Q) of
+	{{value, Pending}, Rest} ->
+	    send_unsent(Rest, send_and_enqueue(Pending, State));
+	{empty, _} ->
 	    State
     end.
 
-build_and_send_reply(From, CommandString, Line, Lines) ->
-    Reply = {ok, Line, Lines},
-    error_logger:info_msg("Got reply ~p to command ~p~n", [Reply, CommandString]),
-    send_reply(From, CommandString, Reply).
+unsolicited("AT-Command Interpreter ready", State = #state{unsent_commands = Unsent}) ->
+    error_logger:info_msg("Modem ready.~n"),
+    send_unsent(Unsent, State#state{peer_state = ready,
+				    unsent_commands = queue:new()});
+unsolicited(Line, State) ->
+    error_logger:error_msg("Unsolicited line from modem: ~p~n", [Line]),
+    State.
+
+parse_integer_response(ResponseStr) ->
+    Stripped = string:strip(ResponseStr),
+    case catch list_to_integer(Stripped) of
+	{'EXIT', _Reason} -> {unparseable, Stripped};
+	Value -> {ok, Value}
+    end.
+
+analyse_response("OK") -> {final, ok};
+analyse_response("ERROR") -> {final, {error, unknown, unknown}};
+analyse_response("BUSY") -> {final, busy};
+analyse_response("NO CARRIER") -> {final, no_carrier};
+analyse_response("+CME ERROR:" ++ ErrorCodeStr) ->
+    {final, case parse_integer_response(ErrorCodeStr) of
+		{unparseable, Stripped} -> {error, unparseable, Stripped};
+		{ok, Code} -> {error, Code, cme_error:lookup(Code)}
+	    end};
+analyse_response("+CMS ERROR:" ++ ErrorCodeStr) ->
+    {final, case parse_integer_response(ErrorCodeStr) of
+		{unparseable, Stripped} -> {error, unparseable, Stripped};
+		{ok, Code} -> {error, Code, cms_error:lookup(Code)}
+	    end};
+analyse_response("RING") -> unsolicited;
+analyse_response(_) -> partial.
 
 send_reply(From, CommandString, Reply) ->
+    error_logger:info_msg("Sending reply ~p to command ~p~n", [Reply, CommandString]),
     case From of
 	none -> ok;
 	{async, Pid} -> Pid ! {modem_server_reply, CommandString, Reply};
@@ -137,14 +184,25 @@ close_serial_port(State = #state{port = Port,
 				 pending_commands = Ks}) ->
     Port ! stop,
     lists:foreach(fun (P) -> send_error(P, port_closed) end, queue:to_list(Ks)),
-    State#state{port = none,
+    State#state{peer_state = closed,
+		port = none,
 		pending_commands = queue:new()}.
 
 open_serial_port(State = #state{config = #config{modem_module = ModemModule,
 						 modem_device = DeviceName},
 				port = none}) ->
-    State#state{port = ModemModule:start([{speed, 115200}, {open, DeviceName}])};
+    State#state{peer_state = initialising,
+		port = ModemModule:start([{speed, 115200}, {open, DeviceName}])};
 open_serial_port(State) ->
+    State.
+
+internal_set_power(off, State) ->
+    ok = set_power_control_string("0", State),
+    timer:sleep(?POWER_OFF_PAUSE),
+    State;
+internal_set_power(on, State) ->
+    ok = set_power_control_string("1", State),
+    timer:sleep(?POWER_ON_PAUSE),
     State.
 
 %---------------------------------------------------------------------------
@@ -152,18 +210,18 @@ open_serial_port(State) ->
 
 init([Config]) ->
     error_logger:info_msg("Starting modem_server ~p~n", [Config]),
-    {ok, open_serial_port(#state{config = Config,
-				 port = none,
-				 pending_commands = queue:new(),
-				 line_accumulator = ""})}.
+    State0 = #state{peer_state = uninitialised,
+		    config = Config,
+		    port = none,
+		    unsent_commands = queue:new(),
+		    pending_commands = queue:new(),
+		    line_accumulator = ""},
+    {ok, open_serial_port(internal_set_power(on, internal_set_power(off, State0)))}.
 
 handle_call({set_power, off}, _From, State) ->
-    ok = set_power_control_string("0", State),
-    {reply, ok, close_serial_port(State)};
+    {reply, ok, close_serial_port(internal_set_power(off, State))};
 handle_call({set_power, on}, _From, State) ->
-    ok = set_power_control_string("1", State),
-    timer:sleep(500),
-    {reply, ok, open_serial_port(State)};
+    {reply, ok, open_serial_port(internal_set_power(on, State))};
 handle_call({cmd, CommandString}, From, State) ->
     {noreply, send_and_enqueue(CommandString, From, State)};
 handle_call(Request, _From, State) ->
