@@ -10,7 +10,7 @@
 -define(CALL_AUDIO_PROFILE, gsmhandset).
 -define(NORMAL_AUDIO_PROFILE, stereoout).
 
--define(EMPTY_NUMBER, "07905974211").
+-define(EMPTY_NUMBER, "").
 
 start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
