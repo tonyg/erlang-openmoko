@@ -22,12 +22,12 @@ init([]) ->
 	   {openmoko_alerter, {openmoko_alerter, start_link, []}, transient, 5, worker,
 	    [openmoko_alerter]},
 
-	   {modem_server, {modem_server, start_link, []}, transient, 5, worker,
-	    [modem_server]},
-
 	   {sms_manager, {sms_manager, start_link, []}, transient, 5, worker,
 	    [sms_manager]},
 
 	   {call_manager, {call_manager, start_link, []}, transient, 5, worker,
-	    [call_manager]}
+	    [call_manager]},
+
+	   {modem_server, {modem_server, start_link, []}, transient, 5, worker,
+	    [modem_server]}
 	  ]}}.
