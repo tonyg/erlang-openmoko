@@ -6,7 +6,7 @@
 
 -export([set_power/1, powercycle/0]).
 -export([setup_modem/0]).
--export([cmd/1, cmd/2, cmd_nowait/1, cmd_async/2]).
+-export([cmd/1, cmd/2, cmd_with_body/2, cmd_nowait/1, cmd_async/2]).
 
 -include("openmoko.hrl").
 
@@ -38,16 +38,19 @@ powercycle() ->
     ok = set_power(on).
 
 cmd(CommandString) ->
-    gen_server:call(?MODULE, {cmd, CommandString}).
+    cmd_with_body(CommandString, []).
 
 cmd(CommandString, Timeout) ->
-    gen_server:call(?MODULE, {cmd, CommandString}, Timeout).
+    gen_server:call(?MODULE, {cmd, CommandString, []}, Timeout).
+
+cmd_with_body(CommandString, BodyLines) ->
+    gen_server:call(?MODULE, {cmd, CommandString, BodyLines}).
 
 cmd_nowait(CommandString) ->
-    gen_server:cast(?MODULE, {cmd, CommandString}).
+    gen_server:cast(?MODULE, {cmd, CommandString, []}).
 
 cmd_async(CommandString, Pid) ->
-    gen_server:cast(?MODULE, {cmd, CommandString, Pid}).
+    gen_server:cast(?MODULE, {cmd, CommandString, [], Pid}).
 
 setup_modem() ->
     {ok, "OK", []} = cmd("ATZ"),
@@ -59,22 +62,34 @@ setup_modem() ->
 %% Implementation
 
 -record(state, {peer_state, config, port, unsent_commands, pending_commands, line_accumulator}).
--record(pending, {command, from, lines}).
+-record(pending, {command, body_lines, from, lines}).
 
-mk_pending(CommandString, From) ->
+mk_pending(CommandString, BodyLines, From) ->
     #pending{command = CommandString,
+	     body_lines = BodyLines,
 	     from = From,
 	     lines = []}.
 
-send_and_enqueue(CommandString, From, State) ->
-    send_and_enqueue(mk_pending(CommandString, From), State).
+send_and_enqueue(CommandString, BodyLines, From, State) ->
+    send_and_enqueue(mk_pending(CommandString, BodyLines, From), State).
 
-send_and_enqueue(Pending = #pending{command = CommandString},
+send_and_enqueue(Pending = #pending{command = CommandString,
+				    body_lines = BodyLines},
 		 State = #state{peer_state = ready,
 				port = Port,
 				pending_commands = OldKs}) ->
     error_logger:info_msg("Sending command ~p~n", [CommandString]),
     Port ! {send, CommandString ++ [13]},
+    case BodyLines of
+	[] -> ok;
+	_ ->
+	    lists:foreach(fun (Line) ->
+				  timer:sleep(100),
+				  Port ! {send, Line ++ [13]}
+			  end, BodyLines),
+	    Port ! {send, [26]},
+	    ok
+    end,
     State#state{pending_commands = queue:in(Pending, OldKs)};
 send_and_enqueue(Pending = #pending{command = CommandString},
 		 State = #state{unsent_commands = Unsent}) ->
@@ -248,16 +263,16 @@ handle_call({set_power, off}, _From, State) ->
     {reply, ok, close_serial_port(internal_set_power(off, State))};
 handle_call({set_power, on}, _From, State) ->
     {reply, ok, open_serial_port(internal_set_power(on, State))};
-handle_call({cmd, CommandString}, From, State) ->
-    {noreply, send_and_enqueue(CommandString, From, State)};
+handle_call({cmd, CommandString, BodyLines}, From, State) ->
+    {noreply, send_and_enqueue(CommandString, BodyLines, From, State)};
 handle_call(Request, _From, State) ->
     error_logger:error_msg("Unknown modem_server:handle_call ~p~n", [Request]),
     {noreply, State}.
 
-handle_cast({cmd, CommandString}, State) ->
-    {noreply, send_and_enqueue(CommandString, none, State)};
-handle_cast({cmd, CommandString, AsyncReplyPid}, State) ->
-    {noreply, send_and_enqueue(CommandString, {async, AsyncReplyPid}, State)};
+handle_cast({cmd, CommandString, BodyLines}, State) ->
+    {noreply, send_and_enqueue(CommandString, BodyLines, none, State)};
+handle_cast({cmd, CommandString, BodyLines, AsyncReplyPid}, State) ->
+    {noreply, send_and_enqueue(CommandString, BodyLines, {async, AsyncReplyPid}, State)};
 handle_cast(Message, State) ->
     error_logger:error_msg("Unknown modem_server:handle_cast ~p~n", [Message]),
     {noreply, State}.
