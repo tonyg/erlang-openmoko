@@ -19,6 +19,12 @@ init([]) ->
 	   {?MODEM_EVENT_SERVER_NAME, {gen_event, start_link, [{local, ?MODEM_EVENT_SERVER_NAME}]},
 	    transient, 5, worker, dynamic},
 
+	   {openmoko_addressbook, {openmoko_addressbook, start_link, []}, transient, 5, worker,
+	    [openmoko_addressbook]},
+
+	   {addressbook_gui, {addressbook_gui, start_link, []}, transient, 5, worker,
+	    [addressbook_gui]},
+
 	   {openmoko_alerter, {openmoko_alerter, start_link, []}, transient, 5, worker,
 	    [openmoko_alerter]},
 

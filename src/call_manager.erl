@@ -1,7 +1,7 @@
 -module(call_manager).
 -behaviour(gen_server).
 
--export([start_link/0]).
+-export([start_link/0, place_call/1]).
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
 
 -include("openmoko.hrl").
@@ -14,6 +14,9 @@
 
 start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
+
+place_call(Number) ->
+    ok = gen_server:cast(?MODULE, {place_call, Number}).
 
 %---------------------------------------------------------------------------
 %% Implementation
@@ -89,6 +92,7 @@ hangup(State) ->
     mark_no_call(State).
 
 dial(Number, State) ->
+    gui:cmd(?W, 'Gtk_window_present', [call_manager_window]),
     case Number of
 	"" ->
 	    State;
@@ -142,6 +146,8 @@ handle_call(_Request, _From, State) ->
 
 handle_cast({event_forwarder, ?MODEM_EVENT_SERVER_NAME, Event}, State) ->
     handle_modem_event(Event, State);
+handle_cast({place_call, Number}, State) ->
+    {noreply, dial(Number, State#state{number_to_dial = Number})};
 handle_cast(Message, State) ->
     error_logger:info_msg("Unknown call_manager:handle_cast ~p~n", [Message]),
     {noreply, State}.

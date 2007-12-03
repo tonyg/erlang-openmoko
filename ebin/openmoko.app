@@ -13,11 +13,13 @@
   {mod, {openmoko, []}},
   {env, [
 
-%% 	 {modem_module, fake_serial},
-%% 	 {modem_power_control_file, "/dev/null"},
+	 {modem_module, fake_serial},
+	 {modem_power_control_file, "/dev/null"},
+	 {addressbook_file, "/tmp/addressbook.dets"},
 
-	 {modem_module, serial},
-	 {modem_power_control_file, "/sys/devices/platform/gta01-pm-gsm.0/power_on"},
+%% 	 {modem_module, serial},
+%% 	 {modem_power_control_file, "/sys/devices/platform/gta01-pm-gsm.0/power_on"},
+%% 	 {addressbook_file, "/media/card/addressbook.dets"},
 
 	 {modem_device, "/dev/ttySAC0"}]}
  ]}.
