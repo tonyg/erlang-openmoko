@@ -1,0 +1,12 @@
+#!/bin/sh
+SHOWCURSOR="no"
+
+killall gsmd
+matchbox-window-manager -use_titlebar yes -use_desktop_mode decorated -theme openmoko-standard-2 -use_cursor $SHOWCURSOR $@ &
+
+# matchbox-panel-2 --start-applets systray,startup \
+  --end-applets openmoko-panel-battery,openmoko-panel-gsm,openmoko-panel-gps,openmoko-panel-usb,openmoko-panel-bt,keyboard --titlebar &
+
+openmoko-terminal &
+
+exec /media/card/erlang-openmoko/runit
