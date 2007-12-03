@@ -1,0 +1,2 @@
+erl -sname monitor -remsh openmoko@fic-gta01
+
