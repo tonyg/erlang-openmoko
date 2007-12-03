@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <!DOCTYPE glade-interface SYSTEM "glade-2.0.dtd">
-<!--Generated with glade3 3.2.2 on Sun Dec  2 22:17:06 2007 by tonyg@truth-->
+<!--Generated with glade3 3.4.0 on Mon Dec  3 12:45:54 2007 -->
 <glade-interface>
   <widget class="GtkDialog" id="tools_dialog">
     <property name="events">GDK_POINTER_MOTION_MASK | GDK_POINTER_MOTION_HINT_MASK | GDK_BUTTON_PRESS_MASK | GDK_BUTTON_RELEASE_MASK</property>
@@ -43,6 +43,20 @@
               </widget>
               <packing>
                 <property name="position">1</property>
+              </packing>
+            </child>
+            <child>
+              <widget class="GtkButton" id="start_terminal_button">
+                <property name="visible">True</property>
+                <property name="can_focus">True</property>
+                <property name="receives_default">True</property>
+                <property name="events">GDK_POINTER_MOTION_MASK | GDK_POINTER_MOTION_HINT_MASK | GDK_BUTTON_PRESS_MASK | GDK_BUTTON_RELEASE_MASK</property>
+                <property name="label" translatable="yes">Open a new terminal</property>
+                <property name="response_id">0</property>
+                <signal name="clicked" handler="erl"/>
+              </widget>
+              <packing>
+                <property name="position">2</property>
               </packing>
             </child>
           </widget>
