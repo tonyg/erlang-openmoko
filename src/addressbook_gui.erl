@@ -1,7 +1,7 @@
 -module(addressbook_gui).
 -behaviour(gen_server).
 
--export([start_link/0]).
+-export([start_link/0, refresh_list/0]).
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
 
 -include("openmoko.hrl").
@@ -11,6 +11,9 @@
 
 start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
+
+refresh_list() ->
+    gen_server:call(?MODULE, refresh_list).
 
 %---------------------------------------------------------------------------
 %% Implementation
@@ -25,17 +28,20 @@ init_gui() ->
     gui:cmd(?W, 'Gtk_tree_view_set_model', [index_view, ListStore]),
     gui:cmd(?W, 'Gtk_tree_view_append_column', [index_view, C0]),
     gui:cmd(?W, 'Gtk_tree_view_append_column', [index_view, C1]),
+    ok = internal_refresh_list(ListStore),
+    {ok, ListStore}.
 
+stop_gui() ->
+    gui:stop(?W),
+    ok.
+
+internal_refresh_list(ListStore) ->
+    gui:cmd(?W, 'Gtk_list_store_clear', [ListStore]),
     lists:foreach(fun (#addressbook_entry{name = Name, phone_number = PhoneNumber}) ->
 			  gui:list_store_append(?W, ListStore),
 			  gui:list_store_set(?W, ListStore, 0, Name),
 			  gui:list_store_set(?W, ListStore, 1, PhoneNumber)
 		  end, openmoko_addressbook:list()),
-
-    {ok, ListStore}.
-
-stop_gui() ->
-    gui:stop(?W),
     ok.
 
 %---------------------------------------------------------------------------
@@ -46,6 +52,9 @@ init([]) ->
     {ok, #state{list_store = ListStore,
 		current_record = none}}.
 
+handle_call(refresh_list, _From, State = #state{list_store = ListStore}) ->
+    ok = internal_refresh_list(ListStore),
+    {reply, ok, State};
 handle_call(_Request, _From, State) ->
     {reply, not_understood, State}.
 
