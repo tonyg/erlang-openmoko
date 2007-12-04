@@ -48,7 +48,7 @@ tools_loop(TW) ->
 	{TW, {signal, {reboot_button, clicked}}} ->
 	    os:cmd("reboot");
 	{TW, {signal, {shutdown_button, clicked}}} ->
-	    os:cmd("halt");
+	    os:cmd("poweroff");
 	{TW, {signal, {start_terminal_button, clicked}}} ->
 	    os:cmd("openmoko-terminal &"),
 	    tools_loop(TW);
