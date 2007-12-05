@@ -1,10 +1,6 @@
 TODO
 ===========================================================================
 
-If, while modem_server is initialising, the "AT-Command Interpreter
-ready" string isn't seen within a certain time, the modem should be
-powercycled again.
-
 Ability to press a key during a call and have DTMF-equivalent sent over the line.
 
 GUI for addressbook entry creation/deletion/update

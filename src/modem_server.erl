@@ -235,6 +235,7 @@ close_serial_port(State = #state{port = Port,
 open_serial_port(State = #state{config = #config{modem_module = ModemModule,
 						 modem_device = DeviceName},
 				port = none}) ->
+    {ok, _TRef} = timer:send_after(3000, initialising_timeout),
     State#state{peer_state = initialising,
 		port = ModemModule:start([{speed, 115200}, {open, DeviceName}])};
 open_serial_port(State) ->
@@ -249,6 +250,9 @@ internal_set_power(on, State) ->
     timer:sleep(?POWER_ON_PAUSE),
     State.
 
+internal_powercycle(State) ->
+    open_serial_port(internal_set_power(on, internal_set_power(off, close_serial_port(State)))).
+
 %---------------------------------------------------------------------------
 %% gen_server behaviour
 
@@ -260,7 +264,7 @@ init([Config]) ->
 		    unsent_commands = queue:new(),
 		    pending_commands = queue:new(),
 		    line_accumulator = ""},
-    {ok, open_serial_port(internal_set_power(on, internal_set_power(off, State0)))}.
+    {ok, internal_powercycle(State0)}.
 
 handle_call({set_power, off}, _From, State) ->
     {reply, ok, close_serial_port(internal_set_power(off, State))};
@@ -285,6 +289,14 @@ handle_cast(Message, State) ->
 handle_info({data, IncomingBinary}, State) ->
     error_logger:info_msg("Received chunk ~p~n", [IncomingBinary]),
     {noreply, process_incoming(binary_to_list(IncomingBinary), State)};
+handle_info(initialising_timeout, State = #state{peer_state = PeerState}) ->
+    case PeerState of
+	initialising ->
+	    error_logger:error_msg("modem_server wedged in initialising state. Powercycling.~n"),
+	    {noreply, internal_powercycle(State)};
+	_ ->
+	    {noreply, State}
+    end;
 handle_info(Message, State) ->
     error_logger:error_msg("Unknown modem_server:handle_info ~p~n", [Message]),
     {noreply, State}.
