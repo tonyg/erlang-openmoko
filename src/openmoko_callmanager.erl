@@ -36,15 +36,20 @@ parse_cops_response("+COPS:" ++ Fields) ->
 parse_cops_response(_) ->
     "unknown".
 
+send_network_registration_event() ->
+    {ok, "OK", [CopsResponse]} = modem_server:cmd("AT+COPS?"),
+    OperatorName = parse_cops_response(CopsResponse),
+    openmoko_event:notify({registered_with_network, OperatorName}),
+    ok.
+
 register_with_network() ->
     {ok, "OK", []} = modem_server:cmd("AT+CFUN=1", infinity),
 
     openmoko_event:notify(registering_with_network),
     {ok, "OK", []} = modem_server:cmd("AT+COPS", 30000),
-    {ok, "OK", [CopsResponse]} = modem_server:cmd("AT+COPS?"),
+    ok = send_network_registration_event(),
+
     {ok, "OK", []} = modem_server:cmd("AT+CLIP=1"),
-    OperatorName = parse_cops_response(CopsResponse),
-    openmoko_event:notify({registered_with_network, OperatorName}),
     ok.
 
 handle_openmoko_event(modem_ready, State) ->
