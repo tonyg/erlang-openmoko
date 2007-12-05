@@ -17,7 +17,7 @@ start() ->
     %MnesiaDir = mnesia:system_info(directory) ++ "/",
     %ok = filelib:ensure_dir(MnesiaDir),
     %ok = mnesia:start(),
-    ok = error_logger:add_report_handler(log_gui, []),
+    ok = log_gui:start(),
     application:start(?MODULE).
 
 stop() ->

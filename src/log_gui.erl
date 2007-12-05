@@ -1,7 +1,18 @@
 -module(log_gui).
 -behaviour(gen_event).
 
+-export([start/0, stop/0, restart/0]).
 -export([init/1, handle_call/2, handle_event/2, handle_info/2, terminate/2, code_change/3]).
+
+start() ->
+    ok = error_logger:add_report_handler(log_gui, []).
+
+stop() ->
+    ok = error_logger:delete_report_handler(log_gui).
+
+restart() ->
+    stop(),
+    start().
 
 %---------------------------------------------------------------------------
 %% Implementation
@@ -14,21 +25,19 @@ log(Kind, Format, Args, State) ->
 
 log(_Kind, _Str, State = #state{event_list_store = none}) ->
     State;
-log(Kind, Str, State = #state{event_list_store = ListStore}) ->
-    Stamp = lists:flatten(io_lib:format("~s", [iso_8601_fmt(erlang:localtime())])),
-    KindText = lists:flatten(io_lib:format("~s", [Kind])),
-    StrText = lists:flatten(io_lib:format("~s", [Str])),
+log(_Kind, Str, State = #state{event_list_store = ListStore}) ->
+%%     Stamp = lists:flatten(io_lib:format("~s", [iso_8601_fmt(erlang:localtime())])),
+%%     KindText = lists:flatten(io_lib:format("~s", [Kind])),
+    StrText = string:strip(lists:flatten(io_lib:format("~s", [Str])), both, $\n),
     gui:list_store_append(?W, ListStore),
-    gui:list_store_set(?W, ListStore, 0, Stamp),
-    gui:list_store_set(?W, ListStore, 1, KindText),
-    gui:list_store_set(?W, ListStore, 2, StrText),
+    gui:list_store_set(?W, ListStore, 0, StrText),
     State.
 
 %% Courtesy of http://www.trapexit.org/Converting_Between_struct:time_and_ISO8601_Format
-iso_8601_fmt(DateTime) ->
-    {{Year,Month,Day},{Hour,Min,Sec}} = DateTime,
-    io_lib:format("~4.10.0B-~2.10.0B-~2.10.0B ~2.10.0B:~2.10.0B:~2.10.0B",
-		  [Year, Month, Day, Hour, Min, Sec]).
+%% iso_8601_fmt(DateTime) ->
+%%     {{Year,Month,Day},{Hour,Min,Sec}} = DateTime,
+%%     io_lib:format("~4.10.0B-~2.10.0B-~2.10.0B ~2.10.0B:~2.10.0B:~2.10.0B",
+%% 		  [Year, Month, Day, Hour, Min, Sec]).
 
 run_tools() ->
     spawn(fun () ->
@@ -66,14 +75,10 @@ init([]) ->
     gui:start_glade(?W, "openmoko.glade"),
 
     ListStore = gui:new_list_store(?W, [string, string, string]),
-    C0 = gui:new_tree_view_column(?W, 0, "Time"),
-    C1 = gui:new_tree_view_column(?W, 1, "Kind"),
-    C2 = gui:new_tree_view_column(?W, 2, "Detail"),
+    C0 = gui:new_tree_view_column(?W, 0, "Detail"),
 
     gui:cmd(?W, 'Gtk_tree_view_set_model', [event_view, ListStore]),
     gui:cmd(?W, 'Gtk_tree_view_append_column', [event_view, C0]),
-    gui:cmd(?W, 'Gtk_tree_view_append_column', [event_view, C1]),
-    gui:cmd(?W, 'Gtk_tree_view_append_column', [event_view, C2]),
 
     {ok, #state{event_list_store = ListStore}}.
 
