@@ -19,6 +19,9 @@ init([]) ->
 handle_call(_Request, _From, State) ->
     {reply, not_understood, State}.
 
+handle_cast({?OPENMOKO_EVENT_SERVER, {battery_status_update, _Update}}, State) ->
+    %% Ignore these. They're very chatty.
+    {noreply, State};
 handle_cast({?OPENMOKO_EVENT_SERVER, Event}, State) ->
     error_logger:info_msg("Openmoko event: ~p~n", [Event]),
     {noreply, State};
