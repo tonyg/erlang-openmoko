@@ -22,7 +22,15 @@ handle_openmoko_event({registered_with_network, OperatorName}, State) ->
     gui:cmd(?W, 'Gtk_label_set_text', [gsm_network_label, OperatorName]),
     {noreply, State};
 handle_openmoko_event({battery_status_update, NewStatus}, State) ->
-    gui:cmd(?W, 'Gtk_label_set_text', [battery_status_label, NewStatus]),
+    NewStatusStr = case NewStatus of
+		       {mains, _} ->
+			   "Mains power; charging";
+		       {battery, ChargeLevel} ->
+			   "Battery; " ++ integer_to_list(10 * round(ChargeLevel * 10)) ++ "%";
+		       _ ->
+			   "Unknown"
+		   end,
+    gui:cmd(?W, 'Gtk_label_set_text', [battery_status_label, NewStatusStr]),
     {noreply, State};
 handle_openmoko_event({callmanager, call_in_progress, Number}, State) ->
     {noreply, mark_call_in_progress(Number, State)};
