@@ -104,7 +104,7 @@ append_char(Char, State = #state{keypad_mode = dialer, number_to_dial = OldNumbe
     ok = set_number_to_dial_label(Number),
     State#state{number_to_dial = Number};
 append_char(Char, State = #state{keypad_mode = dtmf}) ->
-    openmoko_event:notify({dtmf_key_pressed, Char}),
+    ok = openmoko_callmanager:send_dtmf(Char),
     State.
 
 init_gui() ->

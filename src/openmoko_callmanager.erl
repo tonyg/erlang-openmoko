@@ -1,7 +1,7 @@
 -module(openmoko_callmanager).
 -behaviour(gen_server).
 
--export([start_link/0, place_call/1, hangup/0]).
+-export([start_link/0, place_call/1, send_dtmf/1, hangup/0]).
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
 
 -include("openmoko.hrl").
@@ -14,6 +14,9 @@ start_link() ->
 
 place_call(Number) ->
     gen_server:call(?MODULE, {place_call, Number}).
+
+send_dtmf(DtmfCharOrChars) ->
+    gen_server:call(?MODULE, {send_dtmf, DtmfCharOrChars}).
 
 hangup() ->
     ok = gen_server:call(?MODULE, hangup).
@@ -95,6 +98,26 @@ dial(Number, State = #state{call_state = idle}) ->
 dial(_Number, State = #state{call_state = CallState}) ->
     {{error, CallState}, State}.
 
+check_dtmf([]) -> ok;
+check_dtmf([$* | Rest]) -> check_dtmf(Rest);
+check_dtmf([$# | Rest]) -> check_dtmf(Rest);
+check_dtmf([Ch | Rest]) ->
+    if
+	Ch >= $a andalso Ch =< $d ->
+	    check_dtmf(Rest);
+	Ch >= $A andalso Ch =< $D ->
+	    check_dtmf(Rest);
+	Ch >= $0 andalso Ch =< $9 ->
+	    check_dtmf(Rest);
+	true ->
+	    {error, {invalid_dtmf_char, Ch}}
+    end.
+
+internal_send_dtmf([]) -> ok;
+internal_send_dtmf([Ch | Rest]) ->
+    {ok, _, _} = modem_server:cmd("AT+VTS=" ++ [Ch]),
+    internal_send_dtmf(Rest).
+
 %---------------------------------------------------------------------------
 %% gen_server behaviour
 
@@ -105,6 +128,14 @@ init([]) ->
 handle_call({place_call, Number}, _From, State) ->
     {Result, NewState} = dial(Number, State),
     {reply, Result, NewState};
+handle_call({send_dtmf, DtmfCharOrChars}, _From, State = #state{call_state = call_in_progress}) ->
+    DtmfChars = lists:flatten([DtmfCharOrChars]),
+    case check_dtmf(DtmfChars) of
+	ok -> {reply, internal_send_dtmf(DtmfChars), State};
+	Other -> {reply, Other, State}
+    end;
+handle_call({send_dtmf, _DtmfCharOrChars}, _From, State = #state{call_state = CallState}) ->
+    {reply, {error, {call_state, CallState}}, State};
 handle_call(hangup, _From, State) ->
     {reply, ok, internal_hangup(State)};
 handle_call(_Request, _From, State) ->

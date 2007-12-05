@@ -1,8 +1,6 @@
 TODO
 ===========================================================================
 
-Ability to press a key during a call and have DTMF-equivalent sent over the line.
-
 Make startup sequence more robust: e.g. if sms_manager crashes, when
 it restarts, it won't get the registered_with_network event, since
 that's already been broadcast. Similarly, if callmanager_gui is
@@ -33,7 +31,6 @@ Brightness control
 GPRS connection
 
 Information on phone status
- - registered to network? and if so, which? - DONE
  - battery levels - DONE, except needs to detect when charger comes and goes
  - bluetooth on/off
  - gsm on/off
@@ -41,6 +38,16 @@ Information on phone status
  - clock, date
 
 Alarm clock
+
+
+
+DONE
+===========================================================================
+
+Ability to press a key during a call and have DTMF-equivalent sent over the line. - DONE
+
+Information on phone status
+ - registered to network? and if so, which? - DONE
 
 
 
