@@ -1,3 +1,45 @@
+TODO
+===========================================================================
+
+Ability to press a key during a call and have DTMF-equivalent sent over the line.
+
+GUI for addressbook entry creation/deletion/update
+
+Power management
+ - brightness on screen - dim, then switch off
+
+Touchscreen lock
+ - use a event-grabbing window?
+ - AUX key plus on-screen buttons to release lock?
+
+SMS receive, send functionality
+SMS receive, send GUI
+
+Sound support
+ - avoid shell-out to gst-launch
+ - good internal control of multiplexing
+ - use a gstreamer node?
+
+Volume control
+
+Brightness control
+
+GPRS connection
+
+Information on phone status
+ - battery levels
+ - bluetooth on/off
+ - gsm on/off
+ - gprs on/off
+ - clock, date
+
+Alarm clock
+
+
+
+TROUBLESHOOTING
+===========================================================================
+
 If it starts only when you run it over ssh, ie. over a real network
 connection, then make sure fic-gta01 is in your /etc/hosts. You can
 confirm that this might be the problem by running "erl -sname foo"
