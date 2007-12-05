@@ -20,6 +20,7 @@ ERL_CMD=erl \
 	+A10 \
 	-kernel inet_default_listen_options '[{sndbuf, 16384}, {recbuf, 4096}]' \
 	-sasl errlog_type error \
+	-sasl sasl_error_logger '{file,"/tmp/'${NODENAME}'-sasl.log"}' \
 	-mnesia dir '"$(MNESIA_DIR)"' \
 	$(OPENMOKO_ARGS)
 
