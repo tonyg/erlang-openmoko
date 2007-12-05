@@ -29,11 +29,12 @@ show_window(State = #state{visible = false}) ->
 show_window(State = #state{visible = true}) ->
     State.
 
-hide_window(State = #state{visible = true}) ->
+hide_window(Event, State = #state{visible = true}) ->
     os:cmd(filename:join(openmoko:priv_dir(), "stop_ringing.sh")),
     gui:cmd(?W, 'Gtk_widget_hide', [ringing_dialog]),
+    openmoko_event:notify(Event),
     State#state{visible = false};
-hide_window(State = #state{visible = false}) ->
+hide_window(_Event, State = #state{visible = false}) ->
     State.
 
 %---------------------------------------------------------------------------
@@ -59,17 +60,11 @@ handle_cast(Message, State) ->
     {noreply, State}.
 
 handle_info({?W, {signal, {accept_button, clicked}}}, State) ->
-    openmoko_event:notify(accept_call),
-    {noreply, hide_window(State)};
+    {noreply, hide_window(accept_call, State)};
 handle_info({?W, {signal, {reject_button, clicked}}}, State) ->
-    openmoko_event:notify(reject_call),
-    {noreply, hide_window(State)};
-handle_info(timeout, State = #state{visible = IsVisible}) ->
-    case IsVisible of
-	true -> openmoko_event:notify(missed_call);
-	false -> ok
-    end,
-    {noreply, hide_window(State)};
+    {noreply, hide_window(reject_call, State)};
+handle_info(timeout, State) ->
+    {noreply, hide_window(missed_call, State)};
 handle_info(Message, State) ->
     error_logger:info_msg("Unknown call_manager:handle_info ~p~n", [Message]),
     {noreply, State}.

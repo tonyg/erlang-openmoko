@@ -57,8 +57,8 @@ handle_openmoko_event({caller_id, [PhoneNumber | _]}, State) ->
     gen_server:cast(openmoko_alerter, {caller_id, PhoneNumber}),
     {noreply, State};
 handle_openmoko_event(accept_call, State) ->
-    openmoko_audio:select_profile(?CALL_AUDIO_PROFILE),
     {ok, "OK", []} = modem_server:cmd("ATA"),
+    openmoko_audio:select_profile(?CALL_AUDIO_PROFILE),
     {ok, CallerNumber} = gen_server:call(openmoko_alerter, get_caller_id),
     {noreply, mark_call_in_progress(CallerNumber, State)};
 handle_openmoko_event(reject_call, State) ->
