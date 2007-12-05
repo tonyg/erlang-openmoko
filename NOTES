@@ -1,0 +1,32 @@
+Power management
+===========================================================================
+
+From http://wiki.openmoko.org/wiki/Getting_Started_with_your_Neo1973#Suspending
+"Writing "mem" into /sys/power/state tells Linux to suspend - it will
+enter a low power mode where only the GSM and RAM are powered up and
+the CPU sleeps. It will persist in this state until a wake-up event
+arrives. Some currently enabled wake-up events are: AUX or POWER key
+press, USB cable detect."
+
+
+http://wiki.openmoko.org/wiki/Neo1973_GTA01_Power_Management
+
+
+http://wiki.openmoko.org/wiki/GTA01_gsm_modem
+
+AT@POFF must be sent to the modem before using the /sys/... interface
+to "turn off power" to the modem.
+
+To avoid infinite echo during GSM modem power-on, use
+  stty -F /dev/ttySAC0 -echo
+before
+  echo "1" >/sys/bus/platform/devices/gta01-pm-gsm.0/power_on
+
+Similarly, to avoid kernel lock-ups, disable CRTSCTS before powering
+off the modem:
+  stty -F /dev/ttySAC0 -crtscts
+  echo "0" >/sys/bus/platform/devices/gta01-pm-gsm.0/power_on
+
+When suspended, don't AT@POFF, but do 0>power_on. Make sure CTS is
+off. An interrupt will be generated to wake the CPU. -- this is
+probably already done as part of writing "mem" to /sys/power/state??
