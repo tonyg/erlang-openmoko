@@ -213,7 +213,7 @@ send_reply(From, CommandString, Reply) ->
     ok.
 
 send_error(#pending{command = CommandString, from = From}, Reason) ->
-    send_reply(From, CommandString, {error, Reason}).
+    send_reply(From, CommandString, {error, Reason, unknown}).
 
 set_power_control_string(PowerControlString,
 			 #state{config = #config{modem_power_control_file
