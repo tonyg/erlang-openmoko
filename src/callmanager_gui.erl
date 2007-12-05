@@ -16,14 +16,18 @@ start_link() ->
 %---------------------------------------------------------------------------
 %% Implementation
 
--record(state, {number_to_dial}).
+-record(state, {keypad_mode, number_to_dial}).
 
+handle_openmoko_event({registered_with_network, OperatorName}, State) ->
+    gui:cmd(?W, 'Gtk_label_set_text', [gsm_network_label, OperatorName]),
+    {noreply, State};
+handle_openmoko_event({battery_status_update, NewStatus}, State) ->
+    gui:cmd(?W, 'Gtk_label_set_text', [battery_status_label, NewStatus]),
+    {noreply, State};
 handle_openmoko_event({callmanager, call_in_progress, Number}, State) ->
-    mark_call_in_progress(Number),
-    {noreply, State};
+    {noreply, mark_call_in_progress(Number, State)};
 handle_openmoko_event({callmanager, idle}, State) ->
-    mark_call_idle(),
-    {noreply, State};
+    {noreply, mark_call_idle(State)};
 handle_openmoko_event(_Other, State) ->
     {noreply, State}.
 
@@ -53,15 +57,15 @@ handle_button_click(Button, State) ->
     error_logger:info_msg("Unknown button in callmanager_gui: ~p~n", [Button]),
     State.
 
-mark_call_in_progress(Number) ->
+mark_call_in_progress(Number, State) ->
     gui:cmd(?W, 'Gtk_window_present', [call_manager_window]),
     gui:cmd(?W, 'Gtk_notebook_set_current_page', [call_manager_notebook, 1]),
     gui:cmd(?W, 'Gtk_label_set_text', [other_number_label, Number]),
-    ok.
+    State#state{keypad_mode = dtmf}.
 
-mark_call_idle() ->
+mark_call_idle(State) ->
     gui:cmd(?W, 'Gtk_notebook_set_current_page', [call_manager_notebook, 0]),
-    ok.
+    State#state{keypad_mode = dialer}.
 
 clear_digits(State) ->
     set_number_to_dial_label(?EMPTY_NUMBER),
@@ -79,10 +83,13 @@ set_number_to_dial_label(Text) ->
     gui:cmd(?W, 'Gtk_label_set_text', [number_to_dial, Text]),
     ok.
 
-append_char(Char, State = #state{number_to_dial = OldNumber}) ->
+append_char(Char, State = #state{keypad_mode = dialer, number_to_dial = OldNumber}) ->
     Number = OldNumber ++ [Char],
     ok = set_number_to_dial_label(Number),
-    State#state{number_to_dial = Number}.
+    State#state{number_to_dial = Number};
+append_char(Char, State = #state{keypad_mode = dtmf}) ->
+    openmoko_event:notify({dtmf_key_pressed, Char}),
+    State.
 
 init_gui() ->
     gui:start_glade(?W, "callmanager.glade"),
@@ -98,7 +105,7 @@ stop_gui() ->
 init([]) ->
     init_gui(),
     ok = openmoko_event:subscribe(callmanager_gui),
-    {ok, #state{number_to_dial = ?EMPTY_NUMBER}}.
+    {ok, #state{keypad_mode = dialer, number_to_dial = ?EMPTY_NUMBER}}.
 
 handle_call(_Request, _From, State) ->
     {reply, not_understood, State}.

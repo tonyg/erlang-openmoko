@@ -23,11 +23,23 @@ hangup() ->
 
 -record(state, {call_state}).
 
+parse_cops_response("+COPS:" ++ Fields) ->
+    case regexp:split(Fields, ",") of
+	{ok, [_,_,OperatorName]} ->
+	    string:strip(string:strip(OperatorName, both, $"));
+	_ ->
+	    "unparseable"
+    end;
+parse_cops_response(_) ->
+    "unknown".
+
 register_with_network() ->
     {ok, "OK", []} = modem_server:cmd("AT+CFUN=1", infinity),
     {ok, "OK", []} = modem_server:cmd("AT+COPS", 30000),
+    {ok, "OK", [CopsResponse]} = modem_server:cmd("AT+COPS?"),
     {ok, "OK", []} = modem_server:cmd("AT+CLIP=1"),
-    openmoko_event:notify(registered_with_network),
+    OperatorName = parse_cops_response(CopsResponse),
+    openmoko_event:notify({registered_with_network, OperatorName}),
     ok.
 
 handle_openmoko_event(modem_ready, State) ->

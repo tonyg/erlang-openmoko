@@ -20,7 +20,7 @@ setup_modem() ->
     {ok, "OK", []} = modem_server:cmd("AT+CMGF=1"),
     ok.
 
-handle_modem_event(registered_with_network, State) ->
+handle_modem_event({registered_with_network, _}, State) ->
     ok = setup_modem(),
     {noreply, State};
 handle_modem_event(_Other, State) ->
