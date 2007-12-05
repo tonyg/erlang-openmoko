@@ -43,8 +43,13 @@ handle_openmoko_event(_Other, State) ->
     {noreply, State}.
 
 handle_button_click(dial_button, State = #state{number_to_dial = Number}) ->
-    ok = openmoko_callmanager:place_call(Number),
-    State;
+    case openmoko_callmanager:place_call(Number) of
+	ok ->
+	    State;
+	_Other ->
+	    %% FIXME display the reason the call failed
+	    State
+    end;
 handle_button_click(hangup_button, State) ->
     openmoko_callmanager:hangup(),
     State;
