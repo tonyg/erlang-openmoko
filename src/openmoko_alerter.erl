@@ -59,14 +59,14 @@ handle_cast(Message, State) ->
     {noreply, State}.
 
 handle_info({?W, {signal, {accept_button, clicked}}}, State) ->
-    gen_event:notify(?MODEM_EVENT_SERVER_NAME, accept_call),
+    openmoko_event:notify(accept_call),
     {noreply, hide_window(State)};
 handle_info({?W, {signal, {reject_button, clicked}}}, State) ->
-    gen_event:notify(?MODEM_EVENT_SERVER_NAME, reject_call),
+    openmoko_event:notify(reject_call),
     {noreply, hide_window(State)};
 handle_info(timeout, State = #state{visible = IsVisible}) ->
     case IsVisible of
-	true -> gen_event:notify(?MODEM_EVENT_SERVER_NAME, missed_call);
+	true -> openmoko_event:notify(missed_call);
 	false -> ok
     end,
     {noreply, hide_window(State)};

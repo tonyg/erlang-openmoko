@@ -67,7 +67,7 @@ handle_info({?W, {signal, {call_button, clicked}}},
     case CurrentRecord of
 	none -> ignored;
 	#addressbook_entry{phone_number = Number}  ->
-	    call_manager:place_call(Number)
+	    openmoko_callmanager:place_call(Number)
     end,
     {noreply, State};
 handle_info({?W, {signal, {index_view, 'cursor-changed'}}},

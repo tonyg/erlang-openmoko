@@ -16,8 +16,11 @@ init([]) ->
 	  [
 	   %%{log_gui, {log_gui, start_link, []}, transient, 5, worker, [log_gui]},
 
-	   {?MODEM_EVENT_SERVER_NAME, {gen_event, start_link, [{local, ?MODEM_EVENT_SERVER_NAME}]},
+	   {?OPENMOKO_EVENT_SERVER, {openmoko_event, start_link, []},
 	    transient, 5, worker, dynamic},
+
+	   {openmoko_event_logger, {openmoko_event_logger, start_link, []}, transient, 5, worker,
+	    [openmoko_event_logger]},
 
 	   {openmoko_addressbook, {openmoko_addressbook, start_link, []}, transient, 5, worker,
 	    [openmoko_addressbook]},
@@ -30,9 +33,12 @@ init([]) ->
 
 	   {sms_manager, {sms_manager, start_link, []}, transient, 5, worker,
 	    [sms_manager]},
+ 
+	   {openmoko_callmanager, {openmoko_callmanager, start_link, []}, transient, 5, worker,
+	    [openmoko_callmanager]},
 
-	   {call_manager, {call_manager, start_link, []}, transient, 5, worker,
-	    [call_manager]},
+	   {callmanager_gui, {callmanager_gui, start_link, []}, transient, 5, worker,
+	    [callmanager_gui]},
 
 	   {modem_server, {modem_server, start_link, []}, transient, 5, worker,
 	    [modem_server]}

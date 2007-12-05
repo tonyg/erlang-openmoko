@@ -50,14 +50,13 @@ stop_gui() ->
 
 init([]) ->
     {ok, ListStore} = init_gui(),
-    ok = gen_event:add_sup_handler(?MODEM_EVENT_SERVER_NAME, event_forwarder,
-				   [self(), ?MODEM_EVENT_SERVER_NAME]),
+    ok = openmoko_event:subscribe(sms_manager),
     {ok, #state{list_store = ListStore}}.
 
 handle_call(_Request, _From, State) ->
     {reply, not_understood, State}.
 
-handle_cast({event_forwarder, ?MODEM_EVENT_SERVER_NAME, Event}, State) ->
+handle_cast({?OPENMOKO_EVENT_SERVER, Event}, State) ->
     handle_modem_event(Event, State);
 handle_cast(Message, State) ->
     error_logger:info_msg("Unknown sms_manager:handle_cast ~p~n", [Message]),

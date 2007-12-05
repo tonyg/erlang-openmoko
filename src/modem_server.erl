@@ -161,22 +161,22 @@ unsolicited(Line, State = #state{peer_state = initialising,
 	    State;
 	{match, _, _} ->
 	    error_logger:info_msg("Modem ready.~n"),
-	    gen_event:notify(?MODEM_EVENT_SERVER_NAME, modem_ready),
+	    openmoko_event:notify(modem_ready),
 	    send_unsent(Unsent, State#state{peer_state = ready,
 					    unsent_commands = queue:new()})
     end;
 unsolicited("RING", State) ->
-    gen_event:notify(?MODEM_EVENT_SERVER_NAME, modem_ringing),
+    openmoko_event:notify(modem_ringing),
     State;
 unsolicited("NO CARRIER", State) ->
-    gen_event:notify(?MODEM_EVENT_SERVER_NAME, modem_hung_up),
+    openmoko_event:notify(modem_hung_up),
     State;
 unsolicited("+CLIP:" ++ ClipInfo, State) ->
-    gen_event:notify(?MODEM_EVENT_SERVER_NAME, {caller_id, parse_clip(ClipInfo)}),
+    openmoko_event:notify({caller_id, parse_clip(ClipInfo)}),
     State;
 unsolicited(Line, State) ->
     error_logger:warning_msg("Unsolicited line from modem: ~p~n", [Line]),
-    gen_event:notify(?MODEM_EVENT_SERVER_NAME, {modem_unsolicited, Line}),
+    openmoko_event:notify({modem_unsolicited, Line}),
     State.
 
 parse_integer_response(ResponseStr) ->
@@ -190,6 +190,7 @@ analyse_response("OK") -> {final, ok};
 analyse_response("ERROR") -> {final, {error, unknown, unknown}};
 analyse_response("BUSY") -> {final, busy};
 analyse_response("NO CARRIER") -> {final, no_carrier};
+analyse_response("CONNECT") -> {final, connect};
 analyse_response("+CME ERROR:" ++ ErrorCodeStr) ->
     {final, case parse_integer_response(ErrorCodeStr) of
 		{unparseable, Stripped} -> {error, unparseable, Stripped};

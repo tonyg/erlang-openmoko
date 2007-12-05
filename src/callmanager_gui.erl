@@ -1,62 +1,38 @@
--module(call_manager).
+-module(callmanager_gui).
 -behaviour(gen_server).
 
--export([start_link/0, place_call/1]).
+-export([start_link/0]).
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
 
 -include("openmoko.hrl").
 
--define(W, call_manager_node).
--define(CALL_AUDIO_PROFILE, gsmhandset).
--define(NORMAL_AUDIO_PROFILE, stereoout).
+-define(W, callmanager_node).
 
 -define(EMPTY_NUMBER, "").
 
 start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 
-place_call(Number) ->
-    ok = gen_server:cast(?MODULE, {place_call, Number}).
-
 %---------------------------------------------------------------------------
 %% Implementation
 
--record(state, {call_in_progress, number_to_dial}).
+-record(state, {number_to_dial}).
 
-register_with_network() ->
-    {ok, "OK", []} = modem_server:cmd("AT+CFUN=1", infinity),
-    {ok, "OK", []} = modem_server:cmd("AT+COPS", 30000),
-    {ok, "OK", []} = modem_server:cmd("AT+CLIP=1"),
-    gen_event:notify(?MODEM_EVENT_SERVER_NAME, registered_with_network),
-    ok.
-
-handle_modem_event(modem_ready, State) ->
-    modem_server:setup_modem(),
-    ok = register_with_network(),
+handle_openmoko_event({callmanager, call_in_progress, Number}, State) ->
+    mark_call_in_progress(Number),
     {noreply, State};
-handle_modem_event(modem_ringing, State) ->
-    gen_server:cast(openmoko_alerter, ring_detected),
+handle_openmoko_event({callmanager, idle}, State) ->
+    mark_call_idle(),
     {noreply, State};
-handle_modem_event(modem_hung_up, State) ->
-    {noreply, mark_no_call(State)};
-handle_modem_event({caller_id, [PhoneNumber | _]}, State) ->
-    gen_server:cast(openmoko_alerter, {caller_id, PhoneNumber}),
-    {noreply, State};
-handle_modem_event(accept_call, State) ->
-    openmoko_audio:select_profile(?CALL_AUDIO_PROFILE),
-    {ok, "OK", []} = modem_server:cmd("ATA"),
-    {ok, CallerNumber} = gen_server:call(openmoko_alerter, get_caller_id),
-    {noreply, mark_call_in_progress(CallerNumber, State)};
-handle_modem_event(reject_call, State) ->
-    {noreply, hangup(State)};
-handle_modem_event(Other, State) ->
-    error_logger:info_msg("Unknown modem event: ~p~n", [Other]),
+handle_openmoko_event(_Other, State) ->
     {noreply, State}.
 
 handle_button_click(dial_button, State = #state{number_to_dial = Number}) ->
-    dial(Number, State);
+    ok = openmoko_callmanager:place_call(Number),
+    State;
 handle_button_click(hangup_button, State) ->
-    hangup(State);
+    openmoko_callmanager:hangup(),
+    State;
 handle_button_click(clear_button, State) ->
     clear_digits(State);
 handle_button_click(backspace_button, State) ->
@@ -74,33 +50,18 @@ handle_button_click(button9, State) -> append_char($9, State);
 handle_button_click(button_star, State) -> append_char($*, State);
 handle_button_click(button_hash, State) -> append_char($#, State);
 handle_button_click(Button, State) ->
-    error_logger:info_msg("Unknown button in call_manager: ~p~n", [Button]),
+    error_logger:info_msg("Unknown button in callmanager_gui: ~p~n", [Button]),
     State.
 
-mark_call_in_progress(Number, State) ->
+mark_call_in_progress(Number) ->
+    gui:cmd(?W, 'Gtk_window_present', [call_manager_window]),
     gui:cmd(?W, 'Gtk_notebook_set_current_page', [call_manager_notebook, 1]),
     gui:cmd(?W, 'Gtk_label_set_text', [other_number_label, Number]),
-    State#state{call_in_progress = true}.
+    ok.
 
-mark_no_call(State) ->
-    openmoko_audio:select_profile(?NORMAL_AUDIO_PROFILE),
+mark_call_idle() ->
     gui:cmd(?W, 'Gtk_notebook_set_current_page', [call_manager_notebook, 0]),
-    State#state{call_in_progress = false}.
-
-hangup(State) ->
-    {ok, "OK", []} = modem_server:cmd("ATH"),
-    mark_no_call(State).
-
-dial(Number, State) ->
-    gui:cmd(?W, 'Gtk_window_present', [call_manager_window]),
-    case Number of
-	"" ->
-	    State;
-	_ ->
-	    openmoko_audio:select_profile(?CALL_AUDIO_PROFILE),
-	    {ok, "OK", []} = modem_server:cmd("ATD" ++ Number ++ ";"),
-	    mark_call_in_progress(Number, State)
-    end.
+    ok.
 
 clear_digits(State) ->
     set_number_to_dial_label(?EMPTY_NUMBER),
@@ -136,26 +97,22 @@ stop_gui() ->
 
 init([]) ->
     init_gui(),
-    ok = gen_event:add_sup_handler(?MODEM_EVENT_SERVER_NAME, event_forwarder,
-				   [self(), ?MODEM_EVENT_SERVER_NAME]),
-    {ok, #state{call_in_progress = false,
-		number_to_dial = ?EMPTY_NUMBER}}.
+    ok = openmoko_event:subscribe(callmanager_gui),
+    {ok, #state{number_to_dial = ?EMPTY_NUMBER}}.
 
 handle_call(_Request, _From, State) ->
     {reply, not_understood, State}.
 
-handle_cast({event_forwarder, ?MODEM_EVENT_SERVER_NAME, Event}, State) ->
-    handle_modem_event(Event, State);
-handle_cast({place_call, Number}, State) ->
-    {noreply, dial(Number, State#state{number_to_dial = Number})};
+handle_cast({?OPENMOKO_EVENT_SERVER, Event}, State) ->
+    handle_openmoko_event(Event, State);
 handle_cast(Message, State) ->
-    error_logger:info_msg("Unknown call_manager:handle_cast ~p~n", [Message]),
+    error_logger:info_msg("Unknown callmanager_gui:handle_cast ~p~n", [Message]),
     {noreply, State}.
 
 handle_info({?W, {signal, {Button, clicked}}}, State) ->
     {noreply, handle_button_click(Button, State)};
 handle_info(Message, State) ->
-    error_logger:info_msg("Unknown call_manager:handle_info ~p~n", [Message]),
+    error_logger:info_msg("Unknown callmanager_gui:handle_info ~p~n", [Message]),
     {noreply, State}.
 
 terminate(_Reason, _State) ->

@@ -1,1 +1,1 @@
--define(MODEM_EVENT_SERVER_NAME, modem_server_event).
+-define(OPENMOKO_EVENT_SERVER, openmoko_event).
