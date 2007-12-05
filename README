@@ -27,8 +27,8 @@ Brightness control
 GPRS connection
 
 Information on phone status
- - registered to network? and if so, which?
- - battery levels
+ - registered to network? and if so, which? - DONE
+ - battery levels - DONE, except needs to detect when charger comes and goes
  - bluetooth on/off
  - gsm on/off
  - gprs on/off
