@@ -156,7 +156,8 @@ handle_info(Message, State) ->
     error_logger:info_msg("Unknown call_manager:handle_info ~p~n", [Message]),
     {noreply, State}.
 
-terminate(_Reason, _State) ->
+terminate(_Reason, State) ->
+    catch internal_hangup(State),
     ok.
 
 code_change(_OldVsn, State, _Extra) ->
