@@ -27,6 +27,7 @@ Brightness control
 GPRS connection
 
 Information on phone status
+ - registered to network? and if so, which?
  - battery levels
  - bluetooth on/off
  - gsm on/off
