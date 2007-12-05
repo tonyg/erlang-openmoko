@@ -35,6 +35,8 @@ parse_cops_response(_) ->
 
 register_with_network() ->
     {ok, "OK", []} = modem_server:cmd("AT+CFUN=1", infinity),
+
+    openmoko_event:notify(registering_with_network),
     {ok, "OK", []} = modem_server:cmd("AT+COPS", 30000),
     {ok, "OK", [CopsResponse]} = modem_server:cmd("AT+COPS?"),
     {ok, "OK", []} = modem_server:cmd("AT+CLIP=1"),

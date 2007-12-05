@@ -18,6 +18,9 @@ start_link() ->
 
 -record(state, {keypad_mode, number_to_dial}).
 
+handle_openmoko_event(registering_with_network, State) ->
+    gui:cmd(?W, 'Gtk_label_set_text', [gsm_network_label, "Searching..."]),
+    {noreply, State};
 handle_openmoko_event({registered_with_network, OperatorName}, State) ->
     gui:cmd(?W, 'Gtk_label_set_text', [gsm_network_label, OperatorName]),
     {noreply, State};
