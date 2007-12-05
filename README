@@ -3,6 +3,12 @@ TODO
 
 Ability to press a key during a call and have DTMF-equivalent sent over the line.
 
+Make startup sequence more robust: e.g. if sms_manager crashes, when
+it restarts, it won't get the registered_with_network event, since
+that's already been broadcast. Similarly, if callmanager_gui is
+restarted after the phone is already registered to a network, it won't
+display the network name, since the event has already passed it by.
+
 GUI for addressbook entry creation/deletion/update
 
 Power management
