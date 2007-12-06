@@ -22,6 +22,9 @@ init([]) ->
 	   {openmoko_event_logger, {openmoko_event_logger, start_link, []}, transient, 5, worker,
 	    [openmoko_event_logger]},
 
+	   {powersaver, {powersaver, start_link, []}, transient, 5, worker,
+	    [powersaver]},
+
 	   {openmoko_battery_monitor, {openmoko_battery_monitor, start_link, []}, transient, 5,
 	    worker,
 	    [openmoko_battery_monitor]},
