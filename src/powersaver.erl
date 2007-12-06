@@ -1,7 +1,7 @@
 -module(powersaver).
 
 -export([start_link/0]).
--export([init/0, active/0, idle/0, sleeping/0]).
+-export([init/0, active/0, idle/1, sleeping/0]).
 
 -include("openmoko.hrl").
 
@@ -38,20 +38,25 @@ active() ->
 
 enter_idle() ->
     ok = openmoko_lcd:set_brightness(?IDLE_BRIGHTNESS),
-    ?MODULE:idle().
+    {ok, TRef} = timer:send_after(?IDLE_TO_SLEEPING, idle_to_sleeping),
+    ?MODULE:idle(TRef).
 
-idle() ->
+leave_idle(TRef) ->
+    {ok, cancel} = timer:cancel(TRef),
+    enter_active().
+
+idle(TRef) ->
     receive
-	{?OPENMOKO_EVENT_SERVER, modem_ringing} -> enter_active();
-	{?OPENMOKO_EVENT_SERVER, _} -> ?MODULE:idle();
-	_ -> enter_active()
-    after ?IDLE_TO_SLEEPING -> enter_sleeping()
+	{?OPENMOKO_EVENT_SERVER, modem_ringing} -> leave_idle(TRef);
+	{?OPENMOKO_EVENT_SERVER, _} -> ?MODULE:idle(TRef);
+	idle_to_sleeping -> enter_sleeping();
+	_ -> leave_idle(TRef)
     end.
 
 enter_sleeping() ->
     case openmoko_callmanager:get_call_state() of
 	{ok, call_in_progress} ->
-	    idle();
+	    enter_idle();
 	{ok, _} ->
 	    gui:cmd(?W, 'Gtk_widget_show', [lock_window]),
 	    gui:cmd(?W, 'Gtk_window_fullscreen', [lock_window]),
