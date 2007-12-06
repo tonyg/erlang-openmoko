@@ -53,6 +53,7 @@ leave_idle(TRef) ->
 idle(TRef) ->
     receive
 	{?OPENMOKO_EVENT_SERVER, modem_ringing} -> leave_idle(TRef);
+	{?OPENMOKO_EVENT_SERVER, {received_sms, _}} -> leave_idle(TRef);
 	{?OPENMOKO_EVENT_SERVER, _} -> ?MODULE:idle(TRef);
 	{_ReaderPid, power_buttons, {event, _, 16#0001, 16#0074, 16#00000001}} ->
 	    %% PWR depressed
@@ -85,6 +86,8 @@ sleeping() ->
 	    leave_sleeping();
 	{?OPENMOKO_EVENT_SERVER, modem_ringing} ->
 	    brighten_during_locked_ring();
+	{?OPENMOKO_EVENT_SERVER, {received_sms, _}} ->
+	    brighten_during_locked_ring();
 	_ ->
 	    ?MODULE:sleeping()
     end.
@@ -98,6 +101,8 @@ brighten_during_locked_ring() ->
 	    ok = openmoko_lcd:set_brightness(?SLEEPING_BRIGHTNESS),
 	    ?MODULE:sleeping();
 	{?OPENMOKO_EVENT_SERVER, modem_ringing} ->
+	    brighten_during_locked_ring();
+	{?OPENMOKO_EVENT_SERVER, {received_sms, _}} ->
 	    brighten_during_locked_ring()
     after ?SLEEPING_RING_BRIGHTEN_DELAY ->
 	    ok = openmoko_lcd:set_brightness(?SLEEPING_BRIGHTNESS),
