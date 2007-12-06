@@ -1,3 +1,12 @@
+BUGS
+===========================================================================
+
+Sometimes, the alerter appears again after you click accept or
+reject. I'm not sure why. I've worked around it in a couple of ways
+for now.
+
+
+
 TODO
 ===========================================================================
 
