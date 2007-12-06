@@ -24,6 +24,13 @@ handle_openmoko_event(registering_with_network, State) ->
 handle_openmoko_event({registered_with_network, OperatorName}, State) ->
     gui:cmd(?W, 'Gtk_label_set_text', [gsm_network_label, OperatorName]),
     {noreply, State};
+handle_openmoko_event({unread_messages_from, Numbers}, State) ->
+    gui:cmd(?W, 'Gtk_label_set_text', [unread_messages_label,
+				       case Numbers of
+					   [] -> "none";
+					   _ -> openmoko_misc:join_strings(Numbers, ", ")
+				       end]),
+    {noreply, State};
 handle_openmoko_event({battery_status_update, NewStatus}, State) ->
     NewStatusStr = case NewStatus of
 		       {mains, _} ->
