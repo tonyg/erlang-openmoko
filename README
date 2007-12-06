@@ -18,13 +18,6 @@ display the network name, since the event has already passed it by.
 
 GUI for addressbook entry creation/deletion/update
 
-Power management
- - brightness on screen - dim, then switch off
-
-Touchscreen lock
- - use a event-grabbing window?
- - AUX key plus on-screen buttons to release lock?
-
 SMS receive, send functionality
 SMS receive, send GUI
 
@@ -57,6 +50,13 @@ Ability to press a key during a call and have DTMF-equivalent sent over the line
 
 Information on phone status
  - registered to network? and if so, which? - DONE
+
+Power management
+ - brightness on screen - dim, then switch off - DONE
+
+Touchscreen lock - partially DONE, still clunky because of missing gtknode features
+ - use a event-grabbing window?
+ - AUX key plus on-screen buttons to release lock?
 
 
 
