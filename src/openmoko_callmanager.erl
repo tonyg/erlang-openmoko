@@ -1,7 +1,7 @@
 -module(openmoko_callmanager).
 -behaviour(gen_server).
 
--export([start_link/0, place_call/1, send_dtmf/1, hangup/0]).
+-export([start_link/0, place_call/1, send_dtmf/1, hangup/0, get_call_state/0]).
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
 
 -include("openmoko.hrl").
@@ -20,6 +20,9 @@ send_dtmf(DtmfCharOrChars) ->
 
 hangup() ->
     ok = gen_server:call(?MODULE, hangup).
+
+get_call_state() ->
+    {ok, _State} = gen_server:call(?MODULE, get_call_state).
 
 %---------------------------------------------------------------------------
 %% Implementation
@@ -143,6 +146,8 @@ handle_call({send_dtmf, _DtmfCharOrChars}, _From, State = #state{call_state = Ca
     {reply, {error, {call_state, CallState}}, State};
 handle_call(hangup, _From, State) ->
     {reply, ok, internal_hangup(State)};
+handle_call(get_call_state, _From, State = #state{call_state = CallState}) ->
+    {reply, {ok, CallState}, State};
 handle_call(_Request, _From, State) ->
     {reply, not_understood, State}.
 
