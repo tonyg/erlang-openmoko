@@ -2,7 +2,7 @@
 -behaviour(gen_server).
 
 -export([start_link/0, poll/0]).
--export([list/1, delete/2, mark_read/1, submit/1]).
+-export([list/1, delete_all/1, delete/2, mark_read/1, submit/1]).
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
 
 -include("openmoko.hrl").
@@ -20,6 +20,10 @@ poll() ->
 list(TableName) ->
     valid_table_name = validate_table_name(TableName),
     gen_server:call(?MODULE, {list, TableName}).
+
+delete_all(TableName) ->
+    valid_table_name = validate_table_name(TableName),
+    gen_server:call(?MODULE, {delete_all, TableName}).
 
 delete(TableName, Id = {A,B,C})
   when is_number(A) andalso is_number(B) andalso is_number(C) ->
@@ -241,6 +245,8 @@ handle_call(poll, _From, State) ->
     {reply, internal_poll(), State};
 handle_call({list, TableName}, _From, State) ->
     {reply, lists:sort(openmoko_misc:dets_to_list(TableName)), State};
+handle_call({delete_all, TableName}, _From, State) ->
+    {reply, dets:delete_all_objects(TableName), State};
 handle_call({delete, TableName, Id}, _From, State) ->
     {reply, dets:delete(TableName, Id), State};
 handle_call({mark_read, Id}, _From, State) ->
