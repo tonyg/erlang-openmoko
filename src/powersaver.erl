@@ -11,8 +11,8 @@
 -define(IDLE_BRIGHTNESS, 0.1).
 -define(SLEEPING_BRIGHTNESS, 0).
 
--define(ACTIVE_TO_IDLE, 10000).
--define(IDLE_TO_SLEEPING, 20000).
+-define(ACTIVE_TO_IDLE, 5000).
+-define(IDLE_TO_SLEEPING, 10000).
 -define(SLEEPING_RING_BRIGHTEN_DELAY, 5000).
 
 start_link() ->
