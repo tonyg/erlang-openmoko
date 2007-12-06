@@ -5,6 +5,10 @@ Sometimes, the alerter appears again after you click accept or
 reject. I'm not sure why. I've worked around it in a couple of ways
 for now.
 
+Strings like NO CARRIER in an SMS can confuse the modem_server
+parser. A better way of dealing with partials and unsoliciteds is
+needed.
+
 
 
 TODO

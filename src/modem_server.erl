@@ -125,8 +125,27 @@ terminate_reply(State = #state{line_accumulator = Acc}) ->
 
 process_reply("", State) ->
     State;
+process_reply(Line, State = #state{peer_state = initialising}) ->
+    case regexp:match(Line, "AT-Command Interpreter ready$" % " - emacs balancing
+		     ) of
+	nomatch ->
+	    error_logger:warning_msg("Swallowing junk during modem initialisation: ~p~n", [Line]),
+	    State;
+	{match, _, _} ->
+	    openmoko_event:notify(modem_ready),
+	    submit_next(State#state{peer_state = ready})
+    end;
 process_reply(Line, State = #state{pending_command = none}) ->
-    unsolicited(Line, State);
+    case analyse_response(Line) of
+	{final, Summary} ->
+	    error_logger:warning_msg("Unsolicited final reply: ~p -> ~p~n", [Line, Summary]),
+	    State;
+	partial ->
+	    error_logger:warning_msg("Unsolicited partial reply: ~p~n", [Line]),
+	    State;
+	unsolicited ->
+	    State
+    end;
 process_reply(Line, State = #state{pending_command =
 				   Pending = #pending{command = CommandString,
 						      from = From,
@@ -145,49 +164,9 @@ process_reply(Line, State = #state{pending_command =
 					  [Line, CommandString]),
 		    State#state{pending_command = Pending#pending{lines = [Line | Lines]}};
 		unsolicited ->
-		    unsolicited(Line, State)
+		    State
 	    end
     end.
-
-unsolicited(Line, State = #state{peer_state = initialising}) ->
-    case regexp:match(Line, "AT-Command Interpreter ready$" % " - emacs balancing
-		     ) of
-	nomatch ->
-	    error_logger:warning_msg("Swallowing junk during modem initialisation: ~p~n", [Line]),
-	    State;
-	{match, _, _} ->
-	    openmoko_event:notify(modem_ready),
-	    submit_next(State#state{peer_state = ready})
-    end;
-unsolicited("RING", State) ->
-    openmoko_event:notify(modem_ringing),
-    State;
-unsolicited("NO CARRIER", State) ->
-    openmoko_event:notify(modem_hung_up),
-    State;
-unsolicited("+CMTI:" ++ MtInfo, State) ->
-    {ok, Fields} = modem_response:parse_comma_separated(MtInfo),
-    openmoko_event:notify({sms_mt_indicator_received, Fields}),
-    State;
-unsolicited("+CBM:" ++ CellBroadcastMessage, State) ->
-    %% +CBM: <sn>,<mid>,<dcs>,<page>,<pages><CR><LF><data>
-    %% FIXME: In text mode, we get a <data> packet following this
-    %% line. How is it supposed to be parsed?
-    {ok, Fields} = modem_response:parse_comma_separated(CellBroadcastMessage),
-    openmoko_event:notify({cbm_received, Fields}),
-    State;
-unsolicited("+CDS:" ++ SmsStatusReport, State) ->
-    {ok, Fields} = modem_response:parse_comma_separated(SmsStatusReport),
-    openmoko_event:notify({sms_status_report_received, Fields}),
-    State;
-unsolicited("+CLIP:" ++ ClipInfo, State) ->
-    {ok, ClipPieces} = modem_response:parse_comma_separated(ClipInfo),
-    openmoko_event:notify({caller_id, ClipPieces}),
-    State;
-unsolicited(Line, State) ->
-    error_logger:warning_msg("Unsolicited line from modem: ~p~n", [Line]),
-    openmoko_event:notify({modem_unsolicited, Line}),
-    State.
 
 parse_integer_response(ResponseStr) ->
     Stripped = string:strip(ResponseStr),
@@ -199,7 +178,9 @@ parse_integer_response(ResponseStr) ->
 analyse_response("OK") -> {final, ok};
 analyse_response("ERROR") -> {final, {error, unknown, unknown}};
 analyse_response("BUSY") -> {final, busy};
-analyse_response("NO CARRIER") -> {final, no_carrier};
+analyse_response("NO CARRIER") ->
+    openmoko_event:notify(modem_hung_up),
+    {final, no_carrier};
 analyse_response("CONNECT") -> {final, connect};
 analyse_response("+CME ERROR:" ++ ErrorCodeStr) ->
     {final, case parse_integer_response(ErrorCodeStr) of
@@ -211,7 +192,28 @@ analyse_response("+CMS ERROR:" ++ ErrorCodeStr) ->
 		{unparseable, Stripped} -> {error, unparseable, Stripped};
 		{ok, Code} -> {error, Code, cms_error:lookup(Code)}
 	    end};
-analyse_response("RING") -> unsolicited;
+analyse_response("RING") ->
+    openmoko_event:notify(modem_ringing),
+    unsolicited;
+analyse_response("+CMTI:" ++ MtInfo) ->
+    {ok, Fields} = modem_response:parse_comma_separated(MtInfo),
+    openmoko_event:notify({sms_mt_indicator_received, Fields}),
+    unsolicited;
+analyse_response("+CBM:" ++ CellBroadcastMessage) ->
+    %% +CBM: <sn>,<mid>,<dcs>,<page>,<pages><CR><LF><data>
+    %% FIXME: In text mode, we get a <data> packet following this
+    %% line. How is it supposed to be parsed?
+    {ok, Fields} = modem_response:parse_comma_separated(CellBroadcastMessage),
+    openmoko_event:notify({cbm_received, Fields}),
+    unsolicited;
+analyse_response("+CDS:" ++ SmsStatusReport) ->
+    {ok, Fields} = modem_response:parse_comma_separated(SmsStatusReport),
+    openmoko_event:notify({sms_status_report_received, Fields}),
+    unsolicited;
+analyse_response("+CLIP:" ++ ClipInfo) ->
+    {ok, ClipPieces} = modem_response:parse_comma_separated(ClipInfo),
+    openmoko_event:notify({caller_id, ClipPieces}),
+    unsolicited;
 analyse_response(_) -> partial.
 
 send_reply(From, CommandString, Reply) ->
