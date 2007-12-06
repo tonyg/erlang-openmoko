@@ -29,7 +29,7 @@ handle_openmoko_event({battery_status_update, NewStatus}, State) ->
 		       {mains, _} ->
 			   "Mains power; charging";
 		       {battery, ChargeLevel} ->
-			   "Battery; " ++ integer_to_list(10 * round(ChargeLevel * 10)) ++ "%";
+			   "Battery; " ++ integer_to_list(5 * round(ChargeLevel * 20)) ++ "%";
 		       _ ->
 			   "Unknown"
 		   end,
