@@ -30,7 +30,7 @@ handle_call(Request, State = #state{target_pid = TargetPid}) ->
     {ok, gen_server:call(TargetPid, {?OPENMOKO_EVENT_SERVER, Request}), State}.
 
 handle_event(Message, State = #state{target_pid = TargetPid}) ->
-    gen_server:cast(TargetPid, {?OPENMOKO_EVENT_SERVER, Message}),
+    TargetPid ! {?OPENMOKO_EVENT_SERVER, Message},
     {ok, State}.
 
 handle_info(Message, State = #state{target_pid = TargetPid}) ->
@@ -38,7 +38,7 @@ handle_info(Message, State = #state{target_pid = TargetPid}) ->
     {ok, State}.
 
 terminate(Reason, _State = #state{target_pid = TargetPid}) ->
-    gen_server:cast(TargetPid, {?OPENMOKO_EVENT_SERVER, terminated, Reason}),
+    TargetPid ! {?OPENMOKO_EVENT_SERVER, terminated, Reason},
     ok.
 
 code_change(_OldVsn, State, _Extra) ->

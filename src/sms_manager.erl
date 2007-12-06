@@ -20,10 +20,10 @@ setup_modem() ->
     {ok, "OK", []} = modem_server:cmd("AT+CMGF=1"),
     ok.
 
-handle_modem_event({registered_with_network, _}, State) ->
+handle_openmoko_event({registered_with_network, _}, State) ->
     ok = setup_modem(),
     {noreply, State};
-handle_modem_event(_Other, State) ->
+handle_openmoko_event(_Other, State) ->
     {noreply, State}.
 
 init_gui() ->
@@ -56,12 +56,12 @@ init([]) ->
 handle_call(_Request, _From, State) ->
     {reply, not_understood, State}.
 
-handle_cast({?OPENMOKO_EVENT_SERVER, Event}, State) ->
-    handle_modem_event(Event, State);
 handle_cast(Message, State) ->
     error_logger:info_msg("Unknown sms_manager:handle_cast ~p~n", [Message]),
     {noreply, State}.
 
+handle_info({?OPENMOKO_EVENT_SERVER, Event}, State) ->
+    handle_openmoko_event(Event, State);
 handle_info(Message, State) ->
     error_logger:info_msg("Unknown sms_manager:handle_info ~p~n", [Message]),
     {noreply, State}.

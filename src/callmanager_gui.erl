@@ -126,14 +126,14 @@ init([]) ->
 handle_call(_Request, _From, State) ->
     {reply, not_understood, State}.
 
-handle_cast({?OPENMOKO_EVENT_SERVER, Event}, State) ->
-    handle_openmoko_event(Event, State);
 handle_cast(Message, State) ->
     error_logger:info_msg("Unknown callmanager_gui:handle_cast ~p~n", [Message]),
     {noreply, State}.
 
 handle_info({?W, {signal, {Button, clicked}}}, State) ->
     {noreply, handle_button_click(Button, State)};
+handle_info({?OPENMOKO_EVENT_SERVER, Event}, State) ->
+    handle_openmoko_event(Event, State);
 handle_info(Message, State) ->
     error_logger:info_msg("Unknown callmanager_gui:handle_info ~p~n", [Message]),
     {noreply, State}.
