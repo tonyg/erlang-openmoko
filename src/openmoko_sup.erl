@@ -41,8 +41,8 @@ init([]) ->
 	   {openmoko_smsmanager, {openmoko_smsmanager, start_link, []}, transient, 5, worker,
 	    [openmoko_smsmanager]},
  
-%% 	   {smsmanager_gui, {smsmanager_gui, start_link, []}, transient, 5, worker,
-%% 	    [smsmanager_gui]},
+ 	   {smsmanager_gui, {smsmanager_gui, start_link, []}, transient, 5, worker,
+ 	    [smsmanager_gui]},
  
 	   {openmoko_callmanager, {openmoko_callmanager, start_link, []}, transient, 5, worker,
 	    [openmoko_callmanager]},
