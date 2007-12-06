@@ -119,6 +119,7 @@ setup_modem_for_sms() ->
 
 handle_openmoko_event({registered_with_network, _}, State) ->
     ok = setup_modem_for_sms(),
+    ok = internal_poll(),
     {noreply, State};
 handle_openmoko_event({sms_mt_indicator_received, [_Mem, Index]}, State) ->
     {ok, "OK", Lines} = modem_server:cmd("AT+CMGR=" ++ integer_to_list(Index)),
