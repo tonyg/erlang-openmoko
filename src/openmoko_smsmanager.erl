@@ -3,6 +3,7 @@
 
 -export([start_link/0, poll/0]).
 -export([list/1, delete_all/1, delete/2, mark_read/1, submit/1]).
+-export([trigger_unread_message_notification/0]).
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
 
 -include("openmoko.hrl").
@@ -37,6 +38,9 @@ mark_read(Id = {A,B,C})
 submit(Record = #sms{}) ->
     gen_server:call(?MODULE, {submit, Record},
 		    ?SMS_SEND_TIMEOUT + ?PERMITTED_GEN_SERVER_OVERHEAD).
+
+trigger_unread_message_notification() ->
+    ok = gen_server:cast(?MODULE, trigger_unread_message_notification).
 
 validate_table_name(received_sms) -> valid_table_name;
 validate_table_name(unsent_sms) -> valid_table_name;
@@ -110,9 +114,22 @@ insert_sms(Record = #sms{state = State}) ->
 
 insert_indexed_sms(SmsIndex, Record) ->
     {ok, FinalRecord} = insert_sms(Record),
-    openmoko_event:notify({received_sms, FinalRecord}),
+    notify_receipt(FinalRecord),
     {ok, "OK", []} = modem_server:cmd("AT+CMGD=" ++ integer_to_list(SmsIndex)),
     ok.
+
+notify_receipt(Record) ->
+    openmoko_event:notify({received_sms, Record}),
+    internal_trigger_unread_message_notification().
+
+internal_trigger_unread_message_notification() ->
+    UnreadMessagePhoneNumbers =
+	ordsets:to_list(dets:foldl(fun (#sms{state = unread, number = Number}, AccSet) ->
+					   ordsets:add_element(Number, AccSet);
+				       (_, AccSet) ->
+					   AccSet
+				   end, ordsets:new(), received_sms)),
+    openmoko_event:notify({unread_messages_from, UnreadMessagePhoneNumbers}).
 
 setup_modem_for_sms() ->
     {ok, "OK", []} = modem_server:cmd("AT+CMGF=1"),
@@ -266,6 +283,9 @@ handle_call({submit, Record}, _From, State) ->
 handle_call(_Request, _From, State) ->
     {reply, not_understood, State}.
 
+handle_cast(trigger_unread_message_notification, State) ->
+    internal_trigger_unread_message_notification(),
+    {noreply, State};
 handle_cast(Message, State) ->
     error_logger:info_msg("Unknown openmoko_smsmanager:handle_cast ~p~n", [Message]),
     {noreply, State}.
