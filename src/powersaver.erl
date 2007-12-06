@@ -11,8 +11,8 @@
 -define(IDLE_BRIGHTNESS, 0.1).
 -define(SLEEPING_BRIGHTNESS, 0).
 
--define(ACTIVE_TO_IDLE, 5000).
--define(IDLE_TO_SLEEPING, 10000).
+-define(ACTIVE_TO_IDLE, 10000).
+-define(IDLE_TO_SLEEPING, 20000).
 -define(SLEEPING_RING_BRIGHTEN_DELAY, 5000).
 
 start_link() ->
@@ -24,6 +24,7 @@ init() ->
     ok = openmoko_event:subscribe(powersaver),
     {ok, _ReaderPid1} = linux_input_device:start_link("/dev/input/touchscreen0", touchscreen),
     {ok, _ReaderPid2} = linux_input_device:start_link("/dev/input/event0", aux_buttons),
+    {ok, _ReaderPid3} = linux_input_device:start_link("/dev/input/event2", power_buttons),
     enter_active().
 
 enter_active() ->
@@ -32,7 +33,11 @@ enter_active() ->
 
 active() ->
     receive
-	_ -> ?MODULE:active()
+	{_ReaderPid, power_buttons, {event, _, 16#0001, 16#0074, 16#00000001}} ->
+	    %% PWR depressed
+	    enter_sleeping();
+	_ ->
+	    ?MODULE:active()
     after ?ACTIVE_TO_IDLE -> enter_idle()
     end.
 
@@ -49,6 +54,9 @@ idle(TRef) ->
     receive
 	{?OPENMOKO_EVENT_SERVER, modem_ringing} -> leave_idle(TRef);
 	{?OPENMOKO_EVENT_SERVER, _} -> ?MODULE:idle(TRef);
+	{_ReaderPid, power_buttons, {event, _, 16#0001, 16#0074, 16#00000001}} ->
+	    %% PWR depressed
+	    enter_sleeping();
 	idle_to_sleeping -> enter_sleeping();
 	_ -> leave_idle(TRef)
     end.
