@@ -1,5 +1,10 @@
 export DISPLAY=:0.0
 cd /media/card/erlang-openmoko/
+
+mv openmoko-sasl.log.old.2 openmoko-sasl.log.old.3 2>/dev/null
+mv openmoko-sasl.log.old.1 openmoko-sasl.log.old.2 2>/dev/null
+mv openmoko-sasl.log openmoko-sasl.log.old.1 2>/dev/null
+
 erl -noshell \
     -boot start_sasl \
     -sname openmoko \
