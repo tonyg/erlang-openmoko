@@ -18,7 +18,7 @@ init(DevicePath, Info, OwnerPid) ->
 		    info = Info}).
 
 send_event(Event, State = #state{owner_pid = OwnerPid, info = Info}) ->
-    OwnerPid ! {linux_input_device, Info, Event},
+    OwnerPid ! {self(), Info, Event},
     State.
 
 timeval_to_erlang(TvSec, TvUSec) ->
