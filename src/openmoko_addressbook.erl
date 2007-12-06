@@ -14,8 +14,7 @@
 %% Interface
 
 start_link() ->
-    {ok, AddressbookFile} = application:get_env(addressbook_file),
-    start_link(AddressbookFile).
+    start_link(openmoko_misc:dets_filename("addressbook")).
 
 start_link(AddressbookFile) ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [AddressbookFile], []).
@@ -44,7 +43,7 @@ init([AddressbookFile]) ->
     {ok, nostate}.
 
 handle_call(list, _From, State) ->
-    List = dets:foldl(fun (Record, Acc) -> [Record | Acc] end, [], ?TABLE_NAME),
+    List = openmoko_misc:dets_to_list(?TABLE_NAME),
     {reply, lists:sort(List), State};
 handle_call({lookup, Name}, _From, State) ->
     Result = case dets:lookup(?TABLE_NAME, Name) of

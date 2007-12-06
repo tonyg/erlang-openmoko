@@ -6,7 +6,7 @@
 
 -export([set_power/1, powercycle/0, get_peer_state/0]).
 -export([setup_modem/0]).
--export([cmd/1, cmd/2, cmd_with_body/2, cmd_nowait/1, cmd_async/2]).
+-export([cmd/1, cmd/2, cmd_with_body/2, cmd_with_body/3, cmd_nowait/1, cmd_async/2]).
 
 -include("openmoko.hrl").
 
@@ -44,10 +44,13 @@ cmd(CommandString) ->
     cmd_with_body(CommandString, []).
 
 cmd(CommandString, Timeout) ->
-    gen_server:call(?MODULE, {cmd, CommandString, []}, Timeout).
+    cmd_with_body(CommandString, [], Timeout).
 
 cmd_with_body(CommandString, BodyLines) ->
     gen_server:call(?MODULE, {cmd, CommandString, BodyLines}).
+
+cmd_with_body(CommandString, BodyLines, Timeout) ->
+    gen_server:call(?MODULE, {cmd, CommandString, BodyLines}, Timeout).
 
 cmd_nowait(CommandString) ->
     gen_server:cast(?MODULE, {cmd, CommandString, []}).
@@ -146,11 +149,6 @@ process_reply(Line, State = #state{pending_command =
 	    end
     end.
 
-parse_clip(ClipInfo) ->
-    {ok, AllPieces} = regexp:split(ClipInfo, ","),
-    [QuotedPhoneNumber | Pieces] = lists:map(fun string:strip/1, AllPieces),
-    [string:strip(QuotedPhoneNumber, both, $") | Pieces].
-
 unsolicited(Line, State = #state{peer_state = initialising}) ->
     case regexp:match(Line, "AT-Command Interpreter ready$" % " - emacs balancing
 		     ) of
@@ -167,8 +165,24 @@ unsolicited("RING", State) ->
 unsolicited("NO CARRIER", State) ->
     openmoko_event:notify(modem_hung_up),
     State;
+unsolicited("+CMTI:" ++ MtInfo, State) ->
+    {ok, Fields} = modem_response:parse_comma_separated(MtInfo),
+    openmoko_event:notify({sms_mt_indicator_received, Fields}),
+    State;
+unsolicited("+CBM:" ++ CellBroadcastMessage, State) ->
+    %% +CBM: <sn>,<mid>,<dcs>,<page>,<pages><CR><LF><data>
+    %% FIXME: In text mode, we get a <data> packet following this
+    %% line. How is it supposed to be parsed?
+    {ok, Fields} = modem_response:parse_comma_separated(CellBroadcastMessage),
+    openmoko_event:notify({cbm_received, Fields}),
+    State;
+unsolicited("+CDS:" ++ SmsStatusReport, State) ->
+    {ok, Fields} = modem_response:parse_comma_separated(SmsStatusReport),
+    openmoko_event:notify({sms_status_report_received, Fields}),
+    State;
 unsolicited("+CLIP:" ++ ClipInfo, State) ->
-    openmoko_event:notify({caller_id, parse_clip(ClipInfo)}),
+    {ok, ClipPieces} = modem_response:parse_comma_separated(ClipInfo),
+    openmoko_event:notify({caller_id, ClipPieces}),
     State;
 unsolicited(Line, State) ->
     error_logger:warning_msg("Unsolicited line from modem: ~p~n", [Line]),
@@ -213,7 +227,10 @@ send_error(#pending{command = CommandString, from = From}, Reason) ->
     send_reply(From, CommandString, {error, Reason, unknown}).
 
 abort_pending(Reason, State = #state{pending_command = Pending, unsent_commands = UnsentQ}) ->
-    send_error(Pending, Reason),
+    case Pending of
+	none -> ok;
+	_ -> send_error(Pending, Reason)
+    end,
     lists:foreach(fun (P) -> send_error(P, Reason) end, queue:to_list(UnsentQ)),
     State#state{pending_command = none, unsent_commands = queue:new()}.
 

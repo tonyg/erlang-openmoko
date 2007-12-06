@@ -1,4 +1,4 @@
--module(sms_manager).
+-module(smsmanager_gui).
 -behaviour(gen_server).
 
 -export([start_link/0]).

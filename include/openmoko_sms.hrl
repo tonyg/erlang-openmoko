@@ -1,0 +1,1 @@
+-record(sms, {id, number, kind, state, timestamp_string, body}).
