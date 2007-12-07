@@ -27,10 +27,9 @@ wakeup() ->
 init() ->
     true = erlang:register(?MODULE, self()),
     gui:start_glade(?W, "lockwindow.glade"),
-    ok = openmoko_event:subscribe(powersaver),
+    ok = openmoko_event:subscribe(?MODULE),
     {ok, _ReaderPid1} = linux_input_device:start_link("/dev/input/touchscreen0", touchscreen),
     {ok, _ReaderPid2} = linux_input_device:start_link("/dev/input/event0", aux_buttons),
-    {ok, _ReaderPid3} = linux_input_device:start_link("/dev/input/event2", power_buttons),
     enter_active(#state{}).
 
 enter_active(State) ->
@@ -39,13 +38,9 @@ enter_active(State) ->
 
 active(State) ->
     receive
-	wakeup ->
-	    ?MODULE:active(switch_on_lcd_refresh(State));
-	{_ReaderPid, power_buttons, {event, _, 16#0001, 16#0074, 16#00000001}} ->
-	    %% PWR depressed
-	    enter_sleeping(State);
-	_ ->
-	    ?MODULE:active(State)
+	wakeup -> ?MODULE:active(switch_on_lcd_refresh(State));
+	{?OPENMOKO_EVENT_SERVER, power_button_pressed} -> enter_sleeping(State);
+	_ -> ?MODULE:active(State)
     after ?ACTIVE_TO_IDLE -> enter_idle(State)
     end.
 
@@ -64,10 +59,9 @@ idle(State, TRef) ->
 	    leave_idle(switch_on_lcd_refresh(State), TRef);
 	{?OPENMOKO_EVENT_SERVER, modem_ringing} -> leave_idle(State, TRef);
 	{?OPENMOKO_EVENT_SERVER, {received_sms, _}} -> leave_idle(State, TRef);
+	{?OPENMOKO_EVENT_SERVER, {charger_inserted, _TrueOrFalse}} -> leave_idle(State, TRef);
+	{?OPENMOKO_EVENT_SERVER, power_button_pressed} -> enter_sleeping(State);
 	{?OPENMOKO_EVENT_SERVER, _} -> ?MODULE:idle(State, TRef);
-	{_ReaderPid, power_buttons, {event, _, 16#0001, 16#0074, 16#00000001}} ->
-	    %% PWR depressed
-	    enter_sleeping(State);
 	idle_to_sleeping -> enter_sleeping(State);
 	_ -> leave_idle(State, TRef)
     end.
@@ -104,6 +98,8 @@ sleeping(State) ->
 	wakeup ->
 	    leave_sleeping(State);
 	{_ReaderPid, aux_buttons, _} ->
+	    leave_sleeping(State);
+	{?OPENMOKO_EVENT_SERVER, {charger_inserted, _TrueOrFalse}} ->
 	    leave_sleeping(State);
 	{?OPENMOKO_EVENT_SERVER, modem_ringing} ->
 	    shallow_sleep(State);

@@ -3,7 +3,7 @@
 -include("openmoko.hrl").
 
 -export([start_link/0, current_battery_status/0]).
--export([init/0]).
+-export([init/0, mainloop/0]).
 
 -define(REFRESH_INTERVAL, 10000).
 
@@ -31,10 +31,19 @@ start_link() ->
     {ok, spawn_link(?MODULE, init, [])}.
 
 init() ->
+    openmoko_event:subscribe(?MODULE),
+    mainloop().
+
+mainloop() ->
     Status = current_battery_status(),
     openmoko_event:notify(Status),
-    timer:sleep(?REFRESH_INTERVAL),
-    ?MODULE:init().
+    receive
+	{?OPENMOKO_EVENT_SERVER, {charger_inserted, _TrueOrFalse}} ->
+	    ok
+    after ?REFRESH_INTERVAL ->
+	    ok
+    end,
+    ?MODULE:mainloop().
 
 current_battery_status() ->
     BatteryVoltage = openmoko_misc:read_number_sysfile(?BATTVOLT_PATH),
