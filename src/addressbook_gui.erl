@@ -77,10 +77,7 @@ handle_info({?W, {signal, {index_view, 'cursor-changed'}}},
 	[] ->
 	    {noreply, State#state{current_record = none}};
 	[Path | _] ->
-	    gui:cmd(?W, 'Gtk_tree_model_get_iter_from_string', [ListStore, selection_iter, Path]),
-	    gui:cmd(?W, 'Gtk_tree_model_get_value', [ListStore, selection_iter, 0, selval]),
-	    Name = gui:cmd(?W, 'GN_value_get', [selval]),
-	    gui:cmd(?W, 'GN_value_unset', [selval]),
+	    {ok, Name} = gui:get_tree_model_value(?W, ListStore, Path, 0),
 	    {ok, Record} = openmoko_addressbook:lookup(Name),
 	    {noreply, State#state{current_record = Record}}
     end;
