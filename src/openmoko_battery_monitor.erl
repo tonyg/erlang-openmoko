@@ -48,17 +48,11 @@ current_battery_status() ->
 			   charge_state_flags = ChargeStateAtoms,
 			   charge_mode = ChargeMode}.
 
-%%   3600 = 5%
-%%   4200 = 90%
-%% so...
-%%   3564.705882352941 = 0%
-%% and
-%%   7.0588235294117645 mV = 1% of charge.
-%%
+%% Let's call 3600 = 0% and 4200 = 100%.
 voltage_to_percentage(N) when N =< 3600 -> 0;
 voltage_to_percentage(N) when N >= 4200 -> 100; 
 voltage_to_percentage(N) ->
-    round((N - 3564.705882352941) / 7.0588235294117645).
+    round(((N - 3600) / (4200 - 3600)) * 100).
 
 %% Parse out chgstate compatible with gta01 and gta02
 check_chgstate([]) -> [];
