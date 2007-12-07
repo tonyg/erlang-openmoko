@@ -23,18 +23,11 @@ first_valid_backlight_control_dir([Candidate | Rest]) ->
 
 read_number_file(Leaf) ->
     {ok, ControlDir} = get_backlight_control_dir(),
-    %% We don't use file:read_file here, because for some reason,
-    %% doing so in certain /sys/... files causes the empty binary to
-    %% be returned. Instead, we explicitly read a chunk from the file.
-    {ok, Fd} = file:open(filename:join(ControlDir, Leaf), [read, raw]),
-    {ok, Content} = file:read(Fd, 1024),
-    ok = file:close(Fd),
-    list_to_integer(string:strip(Content, both, $\n)).
+    openmoko_misc:read_number_sysfile(filename:join(ControlDir, Leaf)).
 
 write_number_file(Leaf, Value) ->
-    ValueBin = list_to_binary(integer_to_list(Value) ++ "\n"),
     {ok, ControlDir} = get_backlight_control_dir(),
-    ok = file:write_file(filename:join(ControlDir, Leaf), ValueBin).
+    openmoko_misc:write_number_sysfile(filename:join(ControlDir, Leaf), Value).
 
 get_raw_brightness() ->
     read_number_file(?ACTUAL_BRIGHTNESS).

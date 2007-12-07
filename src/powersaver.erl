@@ -38,7 +38,7 @@ init() ->
 			    %% window instead.
 			    no_switch_vt;
 			VtNumberStr ->
-			    VtNumber = list_to_integer(string:strip(VtNumberStr, both, $\n)),
+			    VtNumber = list_to_integer(openmoko_misc:strip_lf(VtNumberStr)),
 			    {switch_vt, {x_vt, VtNumber}}
 		    end,
     error_logger:info_msg("Using powersaver sleep strategy ~p~n", [SleepStrategy]),

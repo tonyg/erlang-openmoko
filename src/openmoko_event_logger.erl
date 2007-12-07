@@ -23,7 +23,7 @@ handle_cast(Message, State) ->
     error_logger:info_msg("Unknown openmoko_event_logger:handle_cast ~p~n", [Message]),
     {noreply, State}.
 
-handle_info({?OPENMOKO_EVENT_SERVER, {battery_status_update, _Update}}, State) ->
+handle_info({?OPENMOKO_EVENT_SERVER, #battery_status_update{}}, State) ->
     %% Ignore these. They're very chatty.
     {noreply, State};
 handle_info({?OPENMOKO_EVENT_SERVER, Event}, State) ->

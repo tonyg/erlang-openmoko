@@ -28,7 +28,7 @@ log(_Kind, _Str, State = #state{event_list_store = none}) ->
 log(_Kind, Str, State = #state{event_list_store = ListStore}) ->
 %%     Stamp = lists:flatten(io_lib:format("~s", [iso_8601_fmt(erlang:localtime())])),
 %%     KindText = lists:flatten(io_lib:format("~s", [Kind])),
-    StrText = string:strip(lists:flatten(io_lib:format("~s", [Str])), both, $\n),
+    StrText = openmoko_misc:strip_lf(lists:flatten(io_lib:format("~s", [Str]))),
     gui:list_store_append(?W, ListStore),
     gui:list_store_set(?W, ListStore, 0, StrText),
     State.

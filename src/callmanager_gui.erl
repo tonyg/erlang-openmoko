@@ -31,14 +31,12 @@ handle_openmoko_event({unread_messages_from, Numbers}, State) ->
 					   _ -> openmoko_misc:join_strings(Numbers, ", ")
 				       end]),
     {noreply, State};
-handle_openmoko_event({battery_status_update, NewStatus}, State) ->
-    NewStatusStr = case NewStatus of
-		       {mains, _} ->
-			   "Mains power; charging";
-		       {battery, ChargeLevel} ->
-			   "Battery; " ++ integer_to_list(5 * round(ChargeLevel * 20)) ++ "%";
-		       _ ->
-			   "Unknown"
+handle_openmoko_event(#battery_status_update{is_mains_connected = IsMainsConnected,
+					     percentage = Percentage},
+		      State) ->
+    NewStatusStr = case IsMainsConnected of
+		       true -> "Charging; " ++ integer_to_list(Percentage) ++ "%";
+		       false -> "Battery; " ++ integer_to_list(Percentage) ++ "%"
 		   end,
     gui:cmd(?W, 'Gtk_label_set_text', [battery_status_label, NewStatusStr]),
     {noreply, State};
