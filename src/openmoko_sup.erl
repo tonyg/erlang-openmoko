@@ -19,6 +19,9 @@ init([]) ->
 	   {?OPENMOKO_EVENT_SERVER, {openmoko_event, start_link, []},
 	    transient, 5, worker, dynamic},
 
+	   {openmoko_ui_changes, {openmoko_ui_changes, start_link, []},
+	    transient, 5, worker, dynamic},
+
 	   {openmoko_event_logger, {openmoko_event_logger, start_link, []}, transient, 5, worker,
 	    [openmoko_event_logger]},
 

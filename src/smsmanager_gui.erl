@@ -5,9 +5,11 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
 
 -include("openmoko.hrl").
+-include("openmoko_addressbook.hrl").
 -include("openmoko_sms.hrl").
 
 -define(W, smsmanager_node).
+-define(PAUSE_AFTER_SEND, 5000).
 
 start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
@@ -58,9 +60,62 @@ handle_signal({call_button, clicked}, State) ->
 	{_P, _Index, #sms{number = Number}} -> openmoko_callmanager:place_call(Number)
     end,
     State;
+handle_signal({lookup_button, clicked}, State) -> lookup_address(), State;
+handle_signal({lookup_select_button, clicked}, State) ->
+    ListStore = get(address_view_store),
+    case addressbook_gui:selected_record(?W, address_view, ListStore) of
+	none ->
+	    ok;
+	#addressbook_entry{phone_number = PhoneNumber} ->
+	    gui:cmd(?W, 'Gtk_entry_set_text', [target_address_entry, PhoneNumber])
+    end,
+    gui:cmd(?W, 'Gtk_widget_hide', [lookup_window]),
+    State;
+handle_signal({lookup_cancel_button, clicked}, State) ->
+    gui:cmd(?W, 'Gtk_widget_hide', [lookup_window]),
+    State;
+handle_signal({send_button, clicked}, State) ->
+    ok = send_sms(),
+    State;
 handle_signal(S, State) ->
     error_logger:info_msg("SMS signal: ~p~n", [S]),
     State.
+
+send_sms() ->
+    TargetNumber = gui:cmd(?W, 'Gtk_entry_get_text', [target_address_entry]),
+
+    Buffer = gui:cmd(?W, 'Gtk_text_view_get_buffer', [compose_text_view]),
+    gui:cmd(?W, 'Gtk_text_buffer_get_start_iter', [Buffer, start_ctv_iter]),
+    gui:cmd(?W, 'Gtk_text_buffer_get_end_iter', [Buffer, end_ctv_iter]),
+    Body = gui:cmd(?W, 'Gtk_text_buffer_get_text', [Buffer, start_ctv_iter, end_ctv_iter, true]),
+
+    gui:cmd(?W, 'Gtk_label_set_text', [sending_status_label, "Sending..."]),
+    gui:cmd(?W, 'Gtk_widget_show', [sending_window]),
+    case openmoko_smsmanager:submit(#sms{number = TargetNumber,
+					 kind = sms,
+					 state = unsent,
+					 timestamp_string = empty,
+					 body = Body}) of
+	{ok, _SmsRecord} ->
+	    gui:cmd(?W, 'Gtk_label_set_text', [sending_status_label, "Successful."]),
+	    gui:cmd(?W, 'Gtk_entry_set_text', [target_address_entry, ""]),
+	    gui:cmd(?W, 'Gtk_text_buffer_set_text', [Buffer, "", -1]),
+	    ok = refresh_index_view(sent);
+	{error, Reason} ->
+	    gui:cmd(?W, 'Gtk_label_set_text', [sending_status_label,
+					       lists:flatten(io_lib:format("Failed:~n~p",
+									   [Reason]))]),
+	    ok
+    end,
+    timer:sleep(?PAUSE_AFTER_SEND),
+    gui:cmd(?W, 'Gtk_widget_hide', [sending_window]),
+    ok.
+
+lookup_address() ->
+    ListStore = get(address_view_store),
+    ok = addressbook_gui:refresh_tree_view(?W, ListStore),
+    gui:cmd(?W, 'Gtk_widget_show', [lookup_window]),
+    ok.
 
 get_selected_path(PageName) ->
     #index_state{list_widget_name = ListWidgetName} = get_page(PageName),
@@ -155,18 +210,36 @@ setup_index_view(PageName, ListWidgetName, DisplayWidgetName, TableName) ->
     gui:cmd(?W, 'Gtk_tree_view_append_column', [ListWidgetName, C0]),
     gui:cmd(?W, 'Gtk_tree_view_append_column', [ListWidgetName, C1]),
     gui:cmd(?W, 'Gtk_tree_view_append_column', [ListWidgetName, C2]),
+    set_page(#index_state{page_name = PageName,
+			  list_widget_name = ListWidgetName,
+			  display_widget_name = DisplayWidgetName,
+			  table_name = TableName,
+			  list_store = ListStore,
+			  message_count = 0}),
+    ok = refresh_index_view(PageName),
+    ok.
+
+refresh_index_view(PageName) ->
+    IndexState = #index_state{table_name = TableName,
+			      message_count = OldCount,
+			      list_store = ListStore}
+	= get_page(PageName),
+    if
+	OldCount > 0 ->
+	    lists:foreach(fun (Index) ->
+				  erase({PageName, Index})
+			  end, lists:seq(0, OldCount - 1));
+	true ->
+	    ok
+    end,
+    gui:cmd(?W, 'Gtk_list_store_clear', [ListStore]),
     Messages = openmoko_smsmanager:list(TableName),
     Count = lists:foldl(fun (Record, Index) ->
 				put({PageName, Index}, Record),
 				ok = append_sms_record(ListStore, Record),
 				Index + 1
 			end, 0, Messages),
-    set_page(#index_state{page_name = PageName,
-			  list_widget_name = ListWidgetName,
-			  display_widget_name = DisplayWidgetName,
-			  table_name = TableName,
-			  list_store = ListStore,
-			  message_count = Count}),
+    set_page(IndexState#index_state{message_count = Count}),
     ok.
 
 init_gui() ->
@@ -174,6 +247,8 @@ init_gui() ->
     ok = setup_index_view(inbox, inbox_list, inbox_display, received_sms),
     ok = setup_index_view(drafts, drafts_list, drafts_display, unsent_sms),
     ok = setup_index_view(sent, sent_list, sent_display, sent_sms),
+    {ok, ListStore} = addressbook_gui:configure_tree_view(?W, address_view),
+    put(address_view_store, ListStore),
     ok.
 
 stop_gui() ->

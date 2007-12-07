@@ -53,12 +53,15 @@ handle_call({lookup, Name}, _From, State) ->
     {reply, Result, State};
 handle_call({update, Record}, _From, State) ->
     ok = dets:insert(?TABLE_NAME, Record),
+    openmoko_ui_changes:notify(addressbook_updated),
     {reply, ok, State};
 handle_call({delete_by_name, Name}, _From, State) ->
     ok = dets:delete(?TABLE_NAME, Name),
+    openmoko_ui_changes:notify(addressbook_updated),
     {reply, ok, State};
 handle_call({delete_record, Record}, _From, State) ->
     ok = dets:delete_object(?TABLE_NAME, Record),
+    openmoko_ui_changes:notify(addressbook_updated),
     {reply, ok, State};
 handle_call(_Request, _From, State) ->
     {reply, not_understood, State}.
