@@ -268,10 +268,13 @@ handle_call({delete, TableName, Id}, _From, State) ->
     {reply, dets:delete(TableName, Id), State};
 handle_call({mark_read, Id}, _From, State) ->
     Reply = case dets:lookup(received_sms, Id) of
-		[Record] ->
+		[Record = #sms{state = unread}] ->
 		    UpdatedRecord = Record#sms{state = read},
 		    ok = dets:insert(received_sms, UpdatedRecord),
+		    internal_trigger_unread_message_notification(),
 		    {ok, UpdatedRecord};
+		[Record] ->
+		    {ok, Record};
 		[] ->
 		    {error, not_found};
 		_ ->
