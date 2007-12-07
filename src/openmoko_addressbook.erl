@@ -47,7 +47,7 @@ handle_call(list, _From, State) ->
     {reply, lists:sort(List), State};
 handle_call({lookup, Name}, _From, State) ->
     Result = case dets:lookup(?TABLE_NAME, Name) of
-		 [] -> {error, not_found};
+		 [] -> {error, not_found, Name};
 		 [Record] -> {ok, Record}
 	     end,
     {reply, Result, State};
