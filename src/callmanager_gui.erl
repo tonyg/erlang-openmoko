@@ -35,7 +35,7 @@ handle_openmoko_event(#battery_status_update{is_mains_connected = IsMainsConnect
 					     percentage = Percentage},
 		      State) ->
     NewStatusStr = case IsMainsConnected of
-		       true -> "Charging; " ++ integer_to_list(Percentage) ++ "%";
+		       true -> "Charging; " ++ integer_to_list(Percentage) ++ "% (?)";
 		       false -> "Battery; " ++ integer_to_list(Percentage) ++ "%"
 		   end,
     gui:cmd(?W, 'Gtk_label_set_text', [battery_status_label, NewStatusStr]),
