@@ -22,7 +22,7 @@ wakeup() ->
     ?MODULE ! wakeup,
     ok.
 
--record(state, {sleep_strategy}).
+-record(state, {}).
 
 init() ->
     true = erlang:register(?MODULE, self()),
@@ -31,18 +31,7 @@ init() ->
     {ok, _ReaderPid1} = linux_input_device:start_link("/dev/input/touchscreen0", touchscreen),
     {ok, _ReaderPid2} = linux_input_device:start_link("/dev/input/event0", aux_buttons),
     {ok, _ReaderPid3} = linux_input_device:start_link("/dev/input/event2", power_buttons),
-    SleepStrategy = case os:cmd(filename:join(openmoko:priv_dir(), "find_x_vt.sh")) of
-			[] ->
-			    %% Don't know which VT X is on. Don't
-			    %% switch away, and rely on the lock
-			    %% window instead.
-			    no_switch_vt;
-			VtNumberStr ->
-			    VtNumber = list_to_integer(openmoko_misc:strip_lf(VtNumberStr)),
-			    {switch_vt, {x_vt, VtNumber}}
-		    end,
-    error_logger:info_msg("Using powersaver sleep strategy ~p~n", [SleepStrategy]),
-    enter_active(#state{sleep_strategy = SleepStrategy}).
+    enter_active(#state{}).
 
 enter_active(State) ->
     ok = openmoko_lcd:set_brightness(?ACTIVE_BRIGHTNESS),
@@ -94,27 +83,9 @@ enter_sleeping(State) ->
 	    deep_sleep(State)
     end.
 
-%% There's no easy way of *actually* turning off the LCD, so here we
-%% switch back to text mode instead, in the hope that the reduced RAM
-%% bandwidth will save us something.
-
-switch_off_lcd_refresh(State = #state{sleep_strategy = SleepStrategy}) ->
-    case SleepStrategy of
-	no_switch_vt ->
-	    ok;
-	{switch_vt, {x_vt, _VtNumber}} ->
-	    os:cmd("chvt 1")
-    end,
-    State.
-
-switch_on_lcd_refresh(State = #state{sleep_strategy = SleepStrategy}) ->
-    case SleepStrategy of
-	no_switch_vt ->
-	    ok;
-	{switch_vt, {x_vt, VtNumber}} ->
-	    os:cmd("chvt " ++ integer_to_list(VtNumber))
-    end,
-    State.
+%% There's no easy way of *actually* turning off the LCD - yet!
+switch_off_lcd_refresh(State) -> State.
+switch_on_lcd_refresh(State) -> State.
 
 leave_sleeping(State) ->
     NewState = switch_on_lcd_refresh(State),
