@@ -52,10 +52,25 @@ current_battery_status() ->
     ChargeStateAtoms = check_chgstate(ChargeStateWords),
     ChargeMode =
 	openmoko_misc:strip_lf(binary_to_list(openmoko_misc:read_raw_sysfile(?CHGMODE_PATH))),
-    #battery_status_update{is_mains_connected = lists:member(charger_present, ChargeStateAtoms),
+    %% The ChargeStateAtoms don't seem to change when the charger plug
+    %% is inserted/removed from my gta01, so I'm using ChargeMode to
+    %% determine is_mains_connected instead.
+    #battery_status_update{is_mains_connected = charge_mode_connected(ChargeMode),
 			   percentage = voltage_to_percentage(BatteryVoltage),
 			   charge_state_flags = ChargeStateAtoms,
 			   charge_mode = ChargeMode}.
+
+%% GTA02?
+%% What about "play-only" and the "*-wait" modes?
+charge_mode_connected("fast") -> true;
+charge_mode_connected("bat-full") -> true;
+%% GTA01
+charge_mode_connected("trickle") -> true;
+charge_mode_connected("fast_" ++ _) -> true;
+%% both
+charge_mode_connected("pre") -> true;
+%% ... otherwise:
+charge_mode_connected(_) -> false.
 
 %% Let's call 3600 = 0% and 4200 = 100%.
 voltage_to_percentage(N) when N =< 3600 -> 0;
