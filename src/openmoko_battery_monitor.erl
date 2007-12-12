@@ -46,12 +46,18 @@ mainloop() ->
     ?MODULE:mainloop().
 
 current_battery_status() ->
-    BatteryVoltage = openmoko_misc:read_number_sysfile(?BATTVOLT_PATH),
-    ChargeStateWords =
-	string:tokens(binary_to_list(openmoko_misc:read_raw_sysfile(?CHGSTATE_PATH)), " \n"),
-    ChargeStateAtoms = check_chgstate(ChargeStateWords),
-    ChargeMode =
-	openmoko_misc:strip_lf(binary_to_list(openmoko_misc:read_raw_sysfile(?CHGMODE_PATH))),
+    {ok, BatteryVoltage} = openmoko_misc:read_number_sysfile(?BATTVOLT_PATH),
+    ChargeStateAtoms =
+	case openmoko_misc:read_raw_sysfile(?CHGSTATE_PATH) of
+	    {ok, ChargeStateBytes} ->
+		check_chgstate(string:tokens(binary_to_list(ChargeStateBytes), " \n"));
+	    eof ->
+		%% When the phone boots, chgstate seems to be completely empty
+		%% until the charger is inserted for the first time. Cope.
+		[]
+	end,
+    {ok, ChargeModeBytes} = openmoko_misc:read_raw_sysfile(?CHGMODE_PATH),
+    ChargeMode = openmoko_misc:strip_lf(binary_to_list(ChargeModeBytes)),
     %% The ChargeStateAtoms don't seem to change when the charger plug
     %% is inserted/removed from my gta01, so I'm using ChargeMode to
     %% determine is_mains_connected instead.

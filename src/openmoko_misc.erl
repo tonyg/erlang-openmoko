@@ -34,13 +34,17 @@ read_raw_sysfile(Path) ->
     %% needed more yet.
     %%
     {ok, Fd} = file:open(Path, [read, raw, binary]),
-    {ok, ContentChunk} = file:read(Fd, 1024),
+    Result = file:read(Fd, 1024),
     ok = file:close(Fd),
-    ContentChunk.
+    Result.
     
 read_number_sysfile(Path) ->
-    Chunk = read_raw_sysfile(Path),
-    list_to_integer(strip_lf(binary_to_list(Chunk))).
+    case read_raw_sysfile(Path) of
+	{ok, Chunk} ->
+	    {ok, list_to_integer(strip_lf(binary_to_list(Chunk)))};
+	Other ->
+	    Other
+    end.
 
 write_number_sysfile(Path, Value) ->
     ValueBin = list_to_binary(integer_to_list(Value) ++ "\n"),

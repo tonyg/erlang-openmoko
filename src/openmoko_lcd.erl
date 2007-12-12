@@ -23,7 +23,8 @@ first_valid_backlight_control_dir([Candidate | Rest]) ->
 
 read_number_file(Leaf) ->
     {ok, ControlDir} = get_backlight_control_dir(),
-    openmoko_misc:read_number_sysfile(filename:join(ControlDir, Leaf)).
+    {ok, Value} = openmoko_misc:read_number_sysfile(filename:join(ControlDir, Leaf)),
+    Value.
 
 write_number_file(Leaf, Value) ->
     {ok, ControlDir} = get_backlight_control_dir(),
