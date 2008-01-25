@@ -11,6 +11,7 @@
 
 -define(SMS_SEND_TIMEOUT, 20000).
 -define(PERMITTED_GEN_SERVER_OVERHEAD, 1000).
+-define(SIM_BUSY_RETRY_DELAY, 3000).
 
 start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
@@ -134,9 +135,24 @@ internal_trigger_unread_message_notification() ->
 setup_modem_for_sms() ->
     {ok, "OK", []} = modem_server:cmd("AT+CMGF=1"),
     {ok, "OK", []} = modem_server:cmd("AT+CSDH=1"),
-    %% Want MT, not BM or DS. See problem with "+CBM:" in modem_server:unsolicited/2
-    {ok, "OK", []} = modem_server:cmd("AT+CNMI=2,1,0,0,0"),
+    ok = setup_sms_push_from_modem(),
     ok.
+
+setup_sms_push_from_modem() ->
+    %% Want MT, not BM or DS. See problem with "+CBM:" in modem_server:unsolicited/2
+    case modem_server:cmd("AT+CNMI=2,1,0,0,0") of
+	{ok, "OK", []} ->
+	    ok;
+	{{error, _, ErrorCodeAtom}, _, _} when ErrorCodeAtom =:= sim_busy orelse
+					       ErrorCodeAtom =:= unknown_error ->
+	    error_logger:info_msg("~p while setting +CNMI, retrying in ~p ms~n",
+				  [ErrorCodeAtom, ?SIM_BUSY_RETRY_DELAY]),
+	    receive
+	    after ?SIM_BUSY_RETRY_DELAY ->
+		    error_logger:info_msg("Now retrying +CNMI~n"),
+		    setup_sms_push_from_modem()
+	    end
+    end.
 
 handle_openmoko_event({registered_with_network, _}, State) ->
     ok = setup_modem_for_sms(),
