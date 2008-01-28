@@ -1,5 +1,5 @@
---- gsmhandset.state	2008-01-28 12:29:47.000000000 +0000
-+++ modified-gsmhandset.state	2008-01-28 12:29:23.000000000 +0000
+--- old/gsmhandset.state	2008-01-28 12:29:47.000000000 +0000
++++ new/gsmhandset.state	2008-01-28 12:29:23.000000000 +0000
 @@ -55,8 +55,8 @@
  		comment.range '0 - 7'
  		iface MIXER
