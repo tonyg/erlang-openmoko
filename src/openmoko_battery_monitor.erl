@@ -3,8 +3,9 @@
 -include("openmoko.hrl").
 
 -export([start_link/0, current_battery_status/0]).
--export([init/0, mainloop/0]).
+-export([init/0, mainloop/1]).
 
+-define(WARN_SLOW_CHARGE_INTERVAL, 30000).
 -define(REFRESH_INTERVAL, 10000).
 
 %% Excerpts from #openmoko IRC, 6 Dec 2007:
@@ -32,18 +33,26 @@ start_link() ->
 
 init() ->
     openmoko_event:subscribe(?MODULE),
-    mainloop().
+    mainloop(none).
 
-mainloop() ->
+mainloop(WarnStartTime) ->
     Status = current_battery_status(),
     openmoko_event:notify(Status),
     receive
 	{?OPENMOKO_EVENT_SERVER, {charger_inserted, _TrueOrFalse}} ->
 	    ok
     after ?REFRESH_INTERVAL ->
-	    ok
+	    ok = drain_mailbox()
     end,
-    ?MODULE:mainloop().
+    ?MODULE:mainloop(maybe_warn_about_slow_charge(Status, WarnStartTime)).
+
+drain_mailbox() ->
+    receive
+	_Msg ->
+	    drain_mailbox()
+    after 0 ->
+	    ok
+    end.
 
 current_battery_status() ->
     {ok, BatteryVoltage} = openmoko_misc:read_number_sysfile(?BATTVOLT_PATH),
@@ -65,6 +74,26 @@ current_battery_status() ->
 			   percentage = voltage_to_percentage(BatteryVoltage),
 			   charge_state_flags = ChargeStateAtoms,
 			   charge_mode = ChargeMode}.
+
+maybe_warn_about_slow_charge(#battery_status_update{charge_mode = "pre"}, WarnStartTime) ->
+    case WarnStartTime of
+	none ->
+	    erlang:now();
+	warned ->
+	    warned;
+	_Other ->
+	    Now = erlang:now(),
+	    DeltaMicrosec = timer:now_diff(Now, WarnStartTime),
+	    if
+		?WARN_SLOW_CHARGE_INTERVAL < DeltaMicrosec / 1000.0 ->
+		    openmoko_event:notify(maybe_slow_charger),
+		    warned;
+		true ->
+		    WarnStartTime
+	    end
+    end;
+maybe_warn_about_slow_charge(#battery_status_update{charge_mode = _AnyOtherMode}, _OutOfDate) ->
+    none.
 
 %% GTA02?
 %% What about "play-only" and the "*-wait" modes?
