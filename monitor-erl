@@ -1,2 +1,3 @@
-erl -sname monitor -remsh openmoko@fic-gta01
+erl -sname monitor -remsh openmoko@localhost
+# erl -sname monitor -remsh openmoko@fic-gta01
 
