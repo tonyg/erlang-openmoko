@@ -56,7 +56,7 @@ selected_record(Node, Widget, ListStore) ->
 	    none;
 	[Path | _] ->
 	    {ok, Name} = gui:get_tree_model_value(Node, ListStore, Path, 0),
-	    {ok, Record} = openmoko_addressbook:lookup(Name),
+	    {ok, Record} = openmoko_addressbook:lookup_name(Name),
 	    Record
     end.
 

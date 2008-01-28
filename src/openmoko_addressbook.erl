@@ -5,7 +5,7 @@
 -include("openmoko_addressbook.hrl").
 
 -export([start_link/0, start_link/1]).
--export([list/0, lookup/1, update/1, delete_by_name/1, delete_record/1]).
+-export([list/0, lookup_name/1, update/1, delete_by_name/1, delete_record/1]).
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
 
 -define(TABLE_NAME, openmoko_addressbook).
@@ -22,8 +22,8 @@ start_link(AddressbookFile) ->
 list() ->
     gen_server:call(?MODULE, list).
 
-lookup(Name) ->
-    gen_server:call(?MODULE, {lookup, Name}).
+lookup_name(Name) ->
+    gen_server:call(?MODULE, {lookup_name, Name}).
 
 update(Record) ->
     gen_server:call(?MODULE, {update, Record}).
@@ -45,7 +45,7 @@ init([AddressbookFile]) ->
 handle_call(list, _From, State) ->
     List = openmoko_misc:dets_to_list(?TABLE_NAME),
     {reply, lists:sort(List), State};
-handle_call({lookup, Name}, _From, State) ->
+handle_call({lookup_name, Name}, _From, State) ->
     Result = case dets:lookup(?TABLE_NAME, Name) of
 		 [] -> {error, not_found, Name};
 		 [Record] -> {ok, Record}
