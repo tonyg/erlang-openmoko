@@ -1,0 +1,13 @@
+--- gsmhandset.state	2008-01-28 12:29:47.000000000 +0000
++++ modified-gsmhandset.state	2008-01-28 12:29:23.000000000 +0000
+@@ -55,8 +55,8 @@
+ 		comment.range '0 - 7'
+ 		iface MIXER
+ 		name 'Bypass Playback Volume'
+-		value.0 5
+-		value.1 5
++		value.0 0
++		value.1 0
+ 	}
+ 	control.7 {
+ 		comment.access 'read write'
