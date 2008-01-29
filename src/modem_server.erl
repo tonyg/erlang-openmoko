@@ -10,6 +10,7 @@
 
 -include("openmoko.hrl").
 
+-define(HARD_POWER_OFF_PAUSE, 500).
 -define(POWER_OFF_PAUSE, 500).
 -define(POWER_ON_PAUSE, 500).
 
@@ -30,7 +31,7 @@ start_link(ModemModule, DeviceName, PowerControlFile) ->
 		     modem_power_control_file = PowerControlFile},
     gen_server:start_link({local, ?MODULE}, ?MODULE, [Config], []).
 
-set_power(hard_off) -> cmd_nowait("AT@POFF"), set_power(off);
+set_power(hard_off) -> cmd_nowait("AT@POFF"), timer:sleep(?HARD_POWER_OFF_PAUSE), set_power(off);
 set_power(off) -> gen_server:call(?MODULE, {set_power, off});
 set_power(on) ->  gen_server:call(?MODULE, {set_power, on}).
 
