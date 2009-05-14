@@ -26,12 +26,7 @@ ERL_CMD=erl \
 
 ERL_CALL=erl_call -sname $(NODENAME) -e
 
-all: $(TARGETS) chmod-executable
-
-chmod-executable:
-	chmod a+x ./copy-to-neo ./runit ./monitor-erl \
-		priv/*.sh \
-		priv/erlang-openmoko.matchbox.session
+all: $(TARGETS)
 
 $(EBIN_DIR)/%.beam: $(SOURCE_DIR)/%.erl
 	erlc $(ERLC_OPTS) $<
