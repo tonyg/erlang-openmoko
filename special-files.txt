@@ -1,0 +1,58 @@
+Battery:
+ - /sys/class/power_supply/battery
+   - current_now: seems to be in milliamps? can be negative
+   - status: either Charging or Discharging
+   - voltage_now: seems to be an input to the existing voltage_to_percentage,
+     down to having similar numbers for almost-empty (3700) and almost-full (4100)
+
+Charger:
+ - /sys/class/power_supply/charger
+   - online: 1 for plugged in - TODO test if this is 0 when not plugged in
+   - type: Mains when plugged in
+   - device/chgmode:
+     - 00001100 12 when plugged into USB on squeee, in turn plugged into mains
+                FAST_CCCV
+     - 00011100 28 when unplugged
+                IDLE
+     - 00000100 4 immediately on replugging, transitioning quickly to 12
+                PRE
+
+     From kernel sources:
+        PCF50606_MBCC1_CHGMOD_MASK      0x1c
+        PCF50606_MBCC1_CHGMOD_QUAL      0x00
+        PCF50606_MBCC1_CHGMOD_PRE       0x04
+        PCF50606_MBCC1_CHGMOD_TRICKLE   0x08
+        PCF50606_MBCC1_CHGMOD_FAST_CCCV 0x0c
+        PCF50606_MBCC1_CHGMOD_FAST_NOCC 0x10
+        PCF50606_MBCC1_CHGMOD_FAST_NOCV 0x14
+        PCF50606_MBCC1_CHGMOD_FAST_SW   0x18
+        PCF50606_MBCC1_CHGMOD_IDLE      0x1c
+
+
+Backlight:
+ - /sys/class/backlight/gta01-bl
+   - actual_brightness: readonly, reflects brightness setting?
+   - bl_power: 0 for on (!) and 1 for off; accepts 2, gives off, thus not sure of other bits
+   - brightness: 0 .. max_brightness
+   - max_brightness: the number that's the max usable for brightness
+
+Bluetooth:
+ - /sys/class/bluetooth
+   - ?
+
+Input events:
+ - /sys/class/input
+   - input0 -> buttons
+   - input1 -> touchscreen
+   - input2 -> PMU events
+
+Vibrator:
+ - /sys/class/leds/neo1973:vibrator
+   - brightness: 0..255, with 0 being off
+
+RTC:
+ - /sys/class/rtc/rtc0
+   - what's "max_user_freq"?
+
+Looks like ttySAC0 is the GSM modem, and ttySAC1 is the GPS.
+
