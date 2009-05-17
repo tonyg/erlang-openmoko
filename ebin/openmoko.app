@@ -18,7 +18,7 @@
 %% 	 {dets_path, "/tmp"},
 
 	 {modem_module, serial},
-	 {modem_power_control_file, "/sys/devices/platform/gta01-pm-gsm.0/power_on"},
+	 {modem_power_control_file, "/sys/devices/platform/neo1973-pm-gsm.0/power_on"},
 	 {dets_path, "/media/card"},
 
 	 {modem_device, "/dev/ttySAC0"}]}

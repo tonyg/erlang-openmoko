@@ -2,7 +2,7 @@
 
 -export([vibrate/0, vibrate/1]).
 
--define(VIBRATOR_CONTROL_FILE, "/sys/class/leds/gta01:vibrator/brightness").
+-define(VIBRATOR_CONTROL_FILE, "/sys/class/leds/neo1973:vibrator/brightness").
 
 -define(ON_DURATION, 500).
 -define(OFF_DURATION, 500).

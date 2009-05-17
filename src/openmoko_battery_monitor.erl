@@ -24,9 +24,9 @@
 %%
 %% Consequently, I'm distrusting apm, and will instead read the voltage directly.
 
--define(BATTVOLT_PATH, "/sys/bus/i2c/devices/0-0008/battvolt").
--define(CHGSTATE_PATH, "/sys/bus/i2c/devices/0-0008/chgstate").
--define(CHGMODE_PATH, "/sys/bus/i2c/devices/0-0008/chgmode").
+-define(BATTVOLT_PATH, "/sys/class/power_supply/battery/voltage_now").
+-define(BATTSTATUS_PATH, "/sys/class/power_supply/battery/status").
+-define(CHGMODE_PATH, "/sys/class/power_supply/charger/device/chgmode").
 
 start_link() ->
     {ok, spawn_link(?MODULE, init, [])}.
@@ -56,23 +56,17 @@ drain_mailbox() ->
 
 current_battery_status() ->
     {ok, BatteryVoltage} = openmoko_misc:read_number_sysfile(?BATTVOLT_PATH),
-    ChargeStateAtoms =
-	case openmoko_misc:read_raw_sysfile(?CHGSTATE_PATH) of
-	    {ok, ChargeStateBytes} ->
-		check_chgstate(string:tokens(binary_to_list(ChargeStateBytes), " \n"));
-	    eof ->
-		%% When the phone boots, chgstate seems to be completely empty
-		%% until the charger is inserted for the first time. Cope.
-		[]
-	end,
-    {ok, ChargeModeBytes} = openmoko_misc:read_raw_sysfile(?CHGMODE_PATH),
-    ChargeMode = openmoko_misc:strip_lf(binary_to_list(ChargeModeBytes)),
-    %% The ChargeStateAtoms don't seem to change when the charger plug
-    %% is inserted/removed from my gta01, so I'm using ChargeMode to
-    %% determine is_mains_connected instead.
+
+    {ok, BatteryStatusBytes} = openmoko_misc:read_raw_sysfile(?BATTSTATUS_PATH),
+    BatteryStatusStr = openmoko_misc:strip_lf(binary_to_list(BatteryStatusBytes)),
+    BatteryStatus = list_to_atom(string:to_lower(BatteryStatusStr)),
+
+    {ok, ChargeModeNum} = openmoko_misc:read_number_sysfile(?CHGMODE_PATH),
+    ChargeMode = decode_charge_mode(ChargeModeNum),
+
     #battery_status_update{is_mains_connected = charge_mode_connected(ChargeMode),
 			   percentage = voltage_to_percentage(BatteryVoltage),
-			   charge_state_flags = ChargeStateAtoms,
+			   battery_status = BatteryStatus,
 			   charge_mode = ChargeMode}.
 
 maybe_warn_about_slow_charge(#battery_status_update{charge_mode = "pre"}, WarnStartTime) ->
@@ -95,14 +89,9 @@ maybe_warn_about_slow_charge(#battery_status_update{charge_mode = "pre"}, WarnSt
 maybe_warn_about_slow_charge(#battery_status_update{charge_mode = _AnyOtherMode}, _OutOfDate) ->
     none.
 
-%% GTA02?
-%% What about "play-only" and the "*-wait" modes?
-charge_mode_connected("fast") -> true;
-charge_mode_connected("bat-full") -> true;
 %% GTA01
 charge_mode_connected("trickle") -> true;
 charge_mode_connected("fast_" ++ _) -> true;
-%% both
 charge_mode_connected("pre") -> true;
 %% ... otherwise:
 charge_mode_connected(_) -> false.
@@ -113,18 +102,14 @@ voltage_to_percentage(N) when N >= 4200 -> 100;
 voltage_to_percentage(N) ->
     round(((N - 3600) / (4200 - 3600)) * 100).
 
-%% Parse out chgstate compatible with gta01 and gta02
-check_chgstate([]) -> [];
+%% Parse out chgstate compatible with gta01. gta02 will have to wait ;-)
 %% gta01 uses pcf50606
-check_chgstate(["fast_enabled" | Rest]) -> [enabled | check_chgstate(Rest)];
-check_chgstate(["present" | Rest]) -> [charger_present, usb_present | check_chgstate(Rest)];
-check_chgstate(["fast_ok" | Rest]) -> [check_chgstate(Rest)]; %% ignore this - no gta02 equivalent
-%% gta02 uses pcf50633
-check_chgstate(["enabled" | Rest]) -> [enabled | check_chgstate(Rest)];
-check_chgstate(["charger_present" | Rest]) -> [charger_present | check_chgstate(Rest)];
-check_chgstate(["usb_present" | Rest]) -> [usb_present | check_chgstate(Rest)];
-%% common to both
-check_chgstate(["error" | Rest]) -> [error | check_chgstate(Rest)];
-check_chgstate(["protection" | Rest]) -> [protection | check_chgstate(Rest)];
-check_chgstate(["ready" | Rest]) -> [ready | check_chgstate(Rest)];
-check_chgstate([_ | Rest]) -> check_chgstate(Rest). %% ignore unknowns
+decode_charge_mode(0) -> "qualification";
+decode_charge_mode(4) -> "pre";
+decode_charge_mode(8) -> "trickle";
+decode_charge_mode(12) -> "fast_cccv";
+decode_charge_mode(16) -> "fast_nocc";
+decode_charge_mode(20) -> "fast_nocv";
+decode_charge_mode(24) -> "fast_sw";
+decode_charge_mode(28) -> "idle";
+decode_charge_mode(Mode) -> {unknown_charge_mode, Mode}.
